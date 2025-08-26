@@ -14,7 +14,143 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      completed_tasks: {
+        Row: {
+          amount_earned: number
+          completed_at: string
+          created_at: string
+          id: string
+          rating_given: number | null
+          student_id: string
+          task_id: string
+        }
+        Insert: {
+          amount_earned: number
+          completed_at?: string
+          created_at?: string
+          id?: string
+          rating_given?: number | null
+          student_id: string
+          task_id: string
+        }
+        Update: {
+          amount_earned?: number
+          completed_at?: string
+          created_at?: string
+          id?: string
+          rating_given?: number | null
+          student_id?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "completed_tasks_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "completed_tasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          miles_radius: number | null
+          phone: string | null
+          rating: number | null
+          updated_at: string
+          user_id: string
+          user_type: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          miles_radius?: number | null
+          phone?: string | null
+          rating?: number | null
+          updated_at?: string
+          user_id: string
+          user_type: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          miles_radius?: number | null
+          phone?: string | null
+          rating?: number | null
+          updated_at?: string
+          user_id?: string
+          user_type?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          elder_id: string
+          id: string
+          location: string | null
+          payment: number
+          status: string | null
+          time_estimate: string | null
+          title: string
+          updated_at: string
+          urgency: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          elder_id: string
+          id?: string
+          location?: string | null
+          payment: number
+          status?: string | null
+          time_estimate?: string | null
+          title: string
+          updated_at?: string
+          urgency?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          elder_id?: string
+          id?: string
+          location?: string | null
+          payment?: number
+          status?: string | null
+          time_estimate?: string | null
+          title?: string
+          updated_at?: string
+          urgency?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_elder_id_fkey"
+            columns: ["elder_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
