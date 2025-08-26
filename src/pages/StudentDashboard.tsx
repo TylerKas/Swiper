@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, X, Heart, MapPin, Clock, DollarSign } from "lucide-react";
+import { ArrowLeft, X, Heart, MapPin, Clock, DollarSign, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock task data
 const mockTasks = [
@@ -61,8 +62,31 @@ const mockTasks = [
 const StudentDashboard = () => {
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [tasks, setTasks] = useState(mockTasks);
+  const [user, setUser] = useState(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/auth');
+        return;
+      }
+      setUser(user);
+    };
+
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        navigate('/');
+      }
+      setUser(session?.user || null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const currentTask = tasks[currentTaskIndex];
 
@@ -109,13 +133,20 @@ const StudentDashboard = () => {
             <Button 
               variant="ghost" 
               size="icon"
+              onClick={() => navigate('/dashboard')}
+              className="hover:bg-white/20"
+            >
+              <User className="h-5 w-5" />
+            </Button>
+            <h1 className="text-xl font-semibold">Find Tasks</h1>
+            <Button 
+              variant="ghost" 
+              size="icon"
               onClick={() => navigate('/')}
               className="hover:bg-white/20"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-xl font-semibold">Find Tasks</h1>
-            <div className="w-10" /> {/* Spacer */}
           </div>
         </div>
       </header>
