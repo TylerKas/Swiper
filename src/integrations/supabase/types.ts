@@ -61,6 +61,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address: string | null
+          bio: string | null
+          city: string | null
           created_at: string
           email: string | null
           full_name: string | null
@@ -71,11 +74,18 @@ export type Database = {
           preferences: string[] | null
           rating: number | null
           school_email: string | null
+          state: string | null
+          time_commitment: string | null
+          university: string | null
           updated_at: string
           user_id: string
           user_type: string
+          zip_code: string | null
         }
         Insert: {
+          address?: string | null
+          bio?: string | null
+          city?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -86,11 +96,18 @@ export type Database = {
           preferences?: string[] | null
           rating?: number | null
           school_email?: string | null
+          state?: string | null
+          time_commitment?: string | null
+          university?: string | null
           updated_at?: string
           user_id: string
           user_type: string
+          zip_code?: string | null
         }
         Update: {
+          address?: string | null
+          bio?: string | null
+          city?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -101,9 +118,13 @@ export type Database = {
           preferences?: string[] | null
           rating?: number | null
           school_email?: string | null
+          state?: string | null
+          time_commitment?: string | null
+          university?: string | null
           updated_at?: string
           user_id?: string
           user_type?: string
+          zip_code?: string | null
         }
         Relationships: []
       }
