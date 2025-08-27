@@ -1,0 +1,309 @@
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { MessageCircle, CheckCircle, Clock, DollarSign, MapPin } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import MessageInterface from "./MessageInterface";
+import RatingInterface from "./RatingInterface";
+
+interface ActiveTask {
+  id: string;
+  task_id: string;
+  status: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled';
+  task: {
+    id: string;
+    title: string;
+    payment: number;
+    location: string;
+    time_estimate: string;
+  };
+  other_user: {
+    id: string;
+    full_name: string;
+    user_type: 'student' | 'elder';
+  };
+}
+
+interface ActiveTasksListProps {
+  userType: 'student' | 'elder';
+}
+
+const ActiveTasksList = ({ userType }: ActiveTasksListProps) => {
+  const [activeTasks, setActiveTasks] = useState<ActiveTask[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTask, setSelectedTask] = useState<ActiveTask | null>(null);
+  const [showMessages, setShowMessages] = useState(false);
+  const [showRating, setShowRating] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (user) {
+      fetchActiveTasks();
+    }
+  }, [user, userType]);
+
+  const fetchActiveTasks = async () => {
+    if (!user) return;
+
+    try {
+      // Get current user's profile ID
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile) throw new Error('Profile not found');
+
+      // Fetch matches with task and other user details
+      const { data, error } = await supabase
+        .from('matches')
+        .select(`
+          id,
+          task_id,
+          status,
+          tasks!inner (
+            id,
+            title,
+            payment,
+            location,
+            time_estimate
+          ),
+          student_profile:profiles!matches_student_id_fkey (
+            id,
+            full_name,
+            user_type
+          ),
+          elder_profile:profiles!matches_elder_id_fkey (
+            id,
+            full_name,
+            user_type
+          )
+        `)
+        .eq(userType === 'student' ? 'student_id' : 'elder_id', profile.id)
+        .in('status', ['accepted', 'in_progress'])
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Transform data to include other_user info
+      const transformedTasks: ActiveTask[] = (data || []).map((match: any) => ({
+        id: match.id,
+        task_id: match.task_id,
+        status: match.status,
+        task: match.tasks,
+        other_user: userType === 'student' ? match.elder_profile : match.student_profile
+      }));
+
+      setActiveTasks(transformedTasks);
+    } catch (error) {
+      console.error('Error fetching active tasks:', error);
+      toast({
+        title: "Error loading tasks",
+        description: "Please try refreshing the page",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTaskStatusUpdate = async (taskId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('matches')
+        .update({ status: newStatus })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      // Update local state
+      setActiveTasks(prev => prev.map(task => 
+        task.id === taskId ? { ...task, status: newStatus as any } : task
+      ));
+
+      toast({
+        title: "Task updated",
+        description: `Task marked as ${newStatus.replace('_', ' ')}`
+      });
+
+      // If completing task, show rating interface
+      if (newStatus === 'completed') {
+        const task = activeTasks.find(t => t.id === taskId);
+        if (task) {
+          setSelectedTask(task);
+          setShowRating(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      toast({
+        title: "Error updating task",
+        description: "Please try again",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleMessageClick = (task: ActiveTask) => {
+    setSelectedTask(task);
+    setShowMessages(true);
+  };
+
+  const handleBackToList = () => {
+    setShowMessages(false);
+    setShowRating(false);
+    setSelectedTask(null);
+  };
+
+  const handleRatingComplete = () => {
+    setShowRating(false);
+    setSelectedTask(null);
+    fetchActiveTasks(); // Refresh the list
+  };
+
+  if (showMessages && selectedTask) {
+    return (
+      <MessageInterface
+        taskId={selectedTask.task_id}
+        otherUserId={selectedTask.other_user.id}
+        otherUserName={selectedTask.other_user.full_name}
+        taskTitle={selectedTask.task.title}
+        taskPayment={selectedTask.task.payment}
+        taskLocation={selectedTask.task.location}
+        taskTimeEstimate={selectedTask.task.time_estimate}
+        onBack={handleBackToList}
+      />
+    );
+  }
+
+  if (showRating && selectedTask) {
+    return (
+      <RatingInterface
+        taskId={selectedTask.task_id}
+        otherUserId={selectedTask.other_user.id}
+        otherUserName={selectedTask.other_user.full_name}
+        otherUserType={selectedTask.other_user.user_type}
+        taskTitle={selectedTask.task.title}
+        taskPayment={selectedTask.task.payment}
+        taskLocation={selectedTask.task.location}
+        taskTimeEstimate={selectedTask.task.time_estimate}
+        onComplete={handleRatingComplete}
+        onSkip={handleRatingComplete}
+      />
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map(i => (
+          <Card key={i} className="animate-pulse">
+            <CardContent className="p-4">
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (activeTasks.length === 0) {
+    return (
+      <Card className="text-center py-8">
+        <CardContent>
+          <p className="text-muted-foreground">No active tasks yet</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            {userType === 'student' 
+              ? "Start swiping on tasks to find your first match!" 
+              : "Post a task to get started!"}
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <CardHeader className="px-0">
+        <CardTitle>Active Tasks</CardTitle>
+      </CardHeader>
+      
+      {activeTasks.map((task) => (
+        <Card key={task.id} className="bg-white shadow-sm border-0">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex-1">
+                <h3 className="font-medium">{task.task.title}</h3>
+                <p className="text-sm text-muted-foreground">
+                  with {task.other_user.full_name}
+                </p>
+              </div>
+              <Badge 
+                variant={task.status === 'in_progress' ? 'default' : 'secondary'}
+                className={task.status === 'in_progress' ? 'bg-gradient-primary text-white border-0' : ''}
+              >
+                {task.status.replace('_', ' ')}
+              </Badge>
+            </div>
+
+            <div className="flex items-center gap-4 mb-3 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                <span>{task.task.location}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                <span>{task.task.time_estimate}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <DollarSign className="h-3 w-3" />
+                <span>${task.task.payment}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleMessageClick(task)}
+                className="flex-1"
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Message
+              </Button>
+              
+              {task.status === 'accepted' && (
+                <Button
+                  size="sm"
+                  onClick={() => handleTaskStatusUpdate(task.id, 'in_progress')}
+                  className="flex-1 bg-gradient-primary hover:opacity-90"
+                >
+                  Start Task
+                </Button>
+              )}
+              
+              {task.status === 'in_progress' && (
+                <Button
+                  size="sm"
+                  onClick={() => handleTaskStatusUpdate(task.id, 'completed')}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Complete
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+};
+
+export default ActiveTasksList;
