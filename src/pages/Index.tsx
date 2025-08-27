@@ -16,6 +16,13 @@ const Index = () => {
             <Heart className="h-8 w-8 text-white" />
             <h1 className="text-2xl font-bold text-white">HelpMate</h1>
           </div>
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/student')}
+            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+          >
+            Student Dashboard
+          </Button>
         </div>
       </header>
 
