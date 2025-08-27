@@ -65,9 +65,12 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          location: string | null
           miles_radius: number | null
           phone: string | null
+          preferences: string[] | null
           rating: number | null
+          school_email: string | null
           updated_at: string
           user_id: string
           user_type: string
@@ -77,9 +80,12 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          location?: string | null
           miles_radius?: number | null
           phone?: string | null
+          preferences?: string[] | null
           rating?: number | null
+          school_email?: string | null
           updated_at?: string
           user_id: string
           user_type: string
@@ -89,9 +95,12 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          location?: string | null
           miles_radius?: number | null
           phone?: string | null
+          preferences?: string[] | null
           rating?: number | null
+          school_email?: string | null
           updated_at?: string
           user_id?: string
           user_type?: string

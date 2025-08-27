@@ -36,7 +36,7 @@ const Index = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <Card className="bg-white/10 backdrop-blur border-white/20 hover:bg-white/20 transition-all duration-300 cursor-pointer group" 
-                    onClick={() => navigate('/student')}>
+                    onClick={() => navigate('/student-auth')}>
                 <CardContent className="p-6 text-center space-y-4">
                   <div className="mx-auto w-16 h-16 bg-white/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                     <Users className="h-8 w-8 text-white" />
@@ -49,7 +49,7 @@ const Index = () => {
               </Card>
 
               <Card className="bg-white/10 backdrop-blur border-white/20 hover:bg-white/20 transition-all duration-300 cursor-pointer group"
-                    onClick={() => navigate('/elder')}>
+                    onClick={() => navigate('/elder-auth')}>
                 <CardContent className="p-6 text-center space-y-4">
                   <div className="mx-auto w-16 h-16 bg-white/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                     <HandHeart className="h-8 w-8 text-white" />
