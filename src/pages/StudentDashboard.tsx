@@ -1,199 +1,310 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, X, Heart, MapPin, Clock, DollarSign } from "lucide-react";
+import { ArrowLeft, DollarSign, CheckCircle, Clock, TrendingUp, MapPin, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
-// Mock task data
-const mockTasks = [
-  {
-    id: 1,
-    title: "Help with grocery shopping",
-    description: "Need someone to help me with my weekly grocery shopping. I have a list ready and just need assistance getting around the store.",
-    elderName: "Margaret Thompson",
-    elderAge: 73,
-    location: "Downtown Campus Area",
-    payment: 25,
-    timeEstimate: "2 hours",
-    category: "Shopping",
-    urgency: "This week"
-  },
-  {
-    id: 2,
-    title: "Computer setup assistance", 
-    description: "I got a new laptop and need help setting it up. Installing programs, transferring files, and showing me how to use video calling.",
-    elderName: "Robert Chen",
-    elderAge: 68,
-    location: "University District",
-    payment: 40,
-    timeEstimate: "3 hours",
-    category: "Technology",
-    urgency: "Flexible"
-  },
-  {
-    id: 3,
-    title: "Garden cleanup",
-    description: "My backyard garden needs some cleanup before winter. Raking leaves, trimming bushes, and general tidying up.",
-    elderName: "Dorothy Williams",
-    elderAge: 71,
-    location: "Near Campus",
-    payment: 35,
-    timeEstimate: "4 hours",
-    category: "Yard Work",
-    urgency: "This weekend"
-  },
-  {
-    id: 4,
-    title: "Moving boxes to attic",
-    description: "I have some storage boxes that need to be moved up to the attic. Not too heavy but I can't manage the ladder anymore.",
-    elderName: "Frank Rodriguez",
-    elderAge: 76,
-    location: "Student Housing Area",
-    payment: 30,
-    timeEstimate: "1.5 hours",
-    category: "Moving",
-    urgency: "Today"
-  }
-];
+interface DashboardStats {
+  totalEarnings: number;
+  tasksCompleted: number;
+  pendingMatches: number;
+  averageRating: number;
+}
+
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  payment: number;
+  location: string;
+  created_at: string;
+  status: string;
+}
+
+interface CompletedTask {
+  id: string;
+  task_id: string;
+  amount_earned: number;
+  rating_given: number;
+  completed_at: string;
+  tasks: {
+    title: string;
+    description: string;
+  };
+}
 
 const StudentDashboard = () => {
-  const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
-  const [tasks, setTasks] = useState(mockTasks);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalEarnings: 0,
+    tasksCompleted: 0,
+    pendingMatches: 0,
+    averageRating: 5.0
+  });
+  const [activeTasks, setActiveTasks] = useState<Task[]>([]);
+  const [completedTasks, setCompletedTasks] = useState<CompletedTask[]>([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  const currentTask = tasks[currentTaskIndex];
-
-  const handleSwipe = (direction: 'left' | 'right') => {
-    if (direction === 'right') {
-      toast({
-        title: "Match! 💚",
-        description: `You've been matched with ${currentTask?.elderName}. They will be notified!`,
-      });
-    } else {
-      toast({
-        title: "Task passed",
-        description: "Looking for the next opportunity...",
-      });
+  useEffect(() => {
+    if (user) {
+      fetchDashboardData();
     }
+  }, [user]);
 
-    // Move to next task
-    if (currentTaskIndex < tasks.length - 1) {
-      setCurrentTaskIndex(currentTaskIndex + 1);
-    } else {
-      // Reset to beginning or show "no more tasks"
-      setCurrentTaskIndex(0);
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      // Get user profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (!profile) return;
+
+      // Fetch completed tasks and calculate stats
+      const { data: completedTasksData } = await supabase
+        .from('completed_tasks')
+        .select(`
+          *,
+          tasks (title, description)
+        `)
+        .eq('student_id', profile.id)
+        .order('completed_at', { ascending: false })
+        .limit(5);
+
+      // Calculate total earnings and tasks completed
+      const totalEarnings = completedTasksData?.reduce((sum, task) => sum + Number(task.amount_earned), 0) || 0;
+      const tasksCompleted = completedTasksData?.length || 0;
+      
+      // Calculate average rating
+      const ratingsGiven = completedTasksData?.filter(task => task.rating_given) || [];
+      const averageRating = ratingsGiven.length > 0 
+        ? ratingsGiven.reduce((sum, task) => sum + task.rating_given, 0) / ratingsGiven.length
+        : 5.0;
+
+      // Fetch active/available tasks
+      const { data: activeTasksData } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('status', 'available')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      const pendingMatches = activeTasksData?.length || 0;
+
+      setStats({
+        totalEarnings,
+        tasksCompleted,
+        pendingMatches,
+        averageRating: Math.round(averageRating * 10) / 10
+      });
+
+      setActiveTasks(activeTasksData || []);
+      setCompletedTasks(completedTasksData || []);
+      
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load dashboard data',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!currentTask) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-secondary flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold">No more tasks available</h2>
-          <p className="text-muted-foreground">Check back later for new opportunities!</p>
-          <Button onClick={() => navigate('/')}>Back to Home</Button>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading dashboard...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-secondary">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white/50 backdrop-blur border-b border-white/20">
-        <div className="container mx-auto px-4 py-4">
+      <header className="bg-card border-b">
+        <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <Button 
               variant="ghost" 
               size="icon"
               onClick={() => navigate('/')}
-              className="hover:bg-white/20"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-xl font-semibold">Find Tasks</h1>
+            <div className="text-center">
+              <h1 className="text-3xl font-bold">Your Dashboard</h1>
+              <p className="text-muted-foreground mt-1">Track your tasks and earnings</p>
+            </div>
             <div className="w-10" /> {/* Spacer */}
           </div>
         </div>
       </header>
 
-      {/* Task Card */}
-      <main className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[calc(100vh-120px)]">
-        <div className="w-full max-w-sm">
-          <Card className="bg-white shadow-card-custom border-0 overflow-hidden">
-            <CardContent className="p-0">
-              {/* Task Header */}
-              <div className="bg-gradient-warm p-6 text-white">
-                <div className="flex items-center justify-between mb-2">
-                  <Badge variant="secondary" className="bg-white/20 text-white border-0">
-                    {currentTask.category}
-                  </Badge>
-                  <Badge variant="secondary" className="bg-white/20 text-white border-0">
-                    {currentTask.urgency}
-                  </Badge>
+      <main className="container mx-auto px-4 py-8 space-y-8">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Total Earnings */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Total Earnings</p>
+                  <p className="text-2xl font-bold text-green-600">${stats.totalEarnings.toFixed(2)}</p>
                 </div>
-                <h2 className="text-xl font-bold mb-2">{currentTask.title}</h2>
-                <p className="text-sm opacity-90">{currentTask.elderName}, {currentTask.elderAge}</p>
-              </div>
-
-              {/* Task Details */}
-              <div className="p-6 space-y-4">
-                <p className="text-gray-700 leading-relaxed">
-                  {currentTask.description}
-                </p>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{currentTask.location}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">{currentTask.timeEstimate}</span>
-                  </div>
+                <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <DollarSign className="h-6 w-6 text-green-600" />
                 </div>
-
-                <div className="flex items-center justify-center space-x-2 bg-gradient-primary p-3 rounded-lg">
-                  <DollarSign className="h-5 w-5 text-white" />
-                  <span className="text-xl font-bold text-white">${currentTask.payment}</span>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex p-6 pt-0 space-x-4">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="flex-1 border-2 border-red-200 hover:bg-red-50 hover:border-red-300"
-                  onClick={() => handleSwipe('left')}
-                >
-                  <X className="h-6 w-6 text-red-500" />
-                </Button>
-                <Button
-                  size="lg"
-                  className="flex-1 bg-gradient-primary hover:opacity-90"
-                  onClick={() => handleSwipe('right')}
-                >
-                  <Heart className="h-6 w-6" />
-                </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Progress Indicator */}
-          <div className="flex justify-center mt-6 space-x-2">
-            {tasks.map((_, index) => (
-              <div
-                key={index}
-                className={`w-2 h-2 rounded-full ${
-                  index === currentTaskIndex ? 'bg-primary' : 'bg-gray-300'
-                }`}
-              />
-            ))}
-          </div>
+          {/* Tasks Completed */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Tasks Completed</p>
+                  <p className="text-2xl font-bold text-blue-600">{stats.tasksCompleted}</p>
+                </div>
+                <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <CheckCircle className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Pending Matches */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Pending Matches</p>
+                  <p className="text-2xl font-bold text-orange-600">{stats.pendingMatches}</p>
+                </div>
+                <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
+                  <Clock className="h-6 w-6 text-orange-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Average Rating */}
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Average Rating</p>
+                  <p className="text-2xl font-bold text-purple-600">{stats.averageRating}</p>
+                </div>
+                <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
+                  <TrendingUp className="h-6 w-6 text-purple-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tasks Sections */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Active Tasks */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold">Active Tasks</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {activeTasks.length > 0 ? (
+                activeTasks.map((task) => (
+                  <div key={task.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2 flex-1">
+                        <h4 className="font-medium">{task.title}</h4>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
+                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                          <div className="flex items-center space-x-1">
+                            <DollarSign className="h-3 w-3" />
+                            <span>${task.payment}</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <MapPin className="h-3 w-3" />
+                            <span>{task.location}</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>{new Date(task.created_at).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-0">
+                        pending
+                      </Badge>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No active tasks yet</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Recently Completed */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold">Recently Completed</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {completedTasks.length > 0 ? (
+                <div className="space-y-4">
+                  {completedTasks.map((task) => (
+                    <div key={task.id} className="p-4 border rounded-lg">
+                      <div className="space-y-2">
+                        <h4 className="font-medium">{task.tasks?.title}</h4>
+                        <div className="flex items-center justify-between text-sm text-muted-foreground">
+                          <div className="flex items-center space-x-1">
+                            <DollarSign className="h-3 w-3" />
+                            <span>Earned ${task.amount_earned}</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>{new Date(task.completed_at).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        {task.rating_given && (
+                          <div className="flex items-center space-x-1 text-sm">
+                            <span className="text-yellow-600">★</span>
+                            <span>{task.rating_given}/5 rating</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No completed tasks yet</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
