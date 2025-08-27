@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,11 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Plus, Check, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import ActiveTasksList from "@/components/ActiveTasksList";
 
 const ElderDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, loading } = useAuth();
   const [activeView, setActiveView] = useState<'post' | 'active'>('post');
   const [formData, setFormData] = useState({
     title: "",
@@ -25,6 +28,13 @@ const ElderDashboard = () => {
     name: "",
     age: ""
   });
+
+  // Redirect if not authenticated
+  React.useEffect(() => {
+    if (!loading && !user) {
+      navigate('/elder-auth');
+    }
+  }, [user, loading, navigate]);
 
   const categories = [
     "Shopping",
@@ -58,7 +68,7 @@ const ElderDashboard = () => {
     "Full day"
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
@@ -71,23 +81,70 @@ const ElderDashboard = () => {
       return;
     }
 
-    toast({
-      title: "Task posted successfully! 🎉",
-      description: "Your task has been added to the marketplace. Students will start seeing it soon.",
-    });
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .single();
 
-    // Reset form
-    setFormData({
-      title: "",
-      description: "",
-      category: "",
-      payment: "",
-      timeEstimate: "",
-      urgency: "",
-      location: "",
-      name: "",
-      age: ""
-    });
+      if (!profile) {
+        toast({
+          title: "Profile not found",
+          description: "Please complete your profile first.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('tasks')
+        .insert({
+          title: formData.title,
+          description: formData.description,
+          category: formData.category,
+          payment: parseFloat(formData.payment),
+          time_estimate: formData.timeEstimate,
+          urgency: formData.urgency,
+          location: formData.location,
+          elder_id: profile.id,
+          status: 'open'
+        });
+
+      if (error) {
+        console.error('Task creation error:', error);
+        toast({
+          title: "Error posting task",
+          description: "Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({
+        title: "Task posted successfully! 🎉",
+        description: "Your task has been added to the marketplace. Students will start seeing it soon.",
+      });
+
+      // Reset form
+      setFormData({
+        title: "",
+        description: "",
+        category: "",
+        payment: "",
+        timeEstimate: "",
+        urgency: "",
+        location: "",
+        name: "",
+        age: ""
+      });
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      toast({
+        title: "Error posting task",
+        description: "Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {

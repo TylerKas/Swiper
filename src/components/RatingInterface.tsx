@@ -42,55 +42,62 @@ const RatingInterface = ({
   const { toast } = useToast();
 
   const handleSubmitRating = async () => {
-    if (!user || rating === 0) return;
+    if (!rating || !taskId || !otherUserId) return;
 
     setSubmitting(true);
     try {
-      // Get current user's profile ID
       const { data: profile } = await supabase
         .from('profiles')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', user?.id)
         .single();
 
       if (!profile) throw new Error('Profile not found');
 
-      // Submit rating
-      const { error } = await supabase
+      // Create rating record
+      const { error: ratingError } = await supabase
         .from('ratings')
         .insert({
           task_id: taskId,
           rater_id: profile.id,
           rated_id: otherUserId,
-          rating,
+          rating: rating,
           comment: comment.trim() || null
         });
 
-      if (error) throw error;
+      if (ratingError) throw ratingError;
 
-      // Mark task as completed
-      const { error: taskError } = await supabase
+      // Create completed task record with earnings
+      const { error: completedError } = await supabase
         .from('completed_tasks')
         .insert({
           task_id: taskId,
           student_id: otherUserType === 'student' ? otherUserId : profile.id,
-          rating_given: rating,
-          amount_earned: taskPayment
+          amount_earned: taskPayment,
+          rating_given: rating
         });
+
+      if (completedError) throw completedError;
+
+      // Update task status to completed
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .update({ status: 'completed' })
+        .eq('id', taskId);
 
       if (taskError) throw taskError;
 
       toast({
-        title: "Rating submitted! ⭐",
-        description: `Thank you for rating ${otherUserName}`,
+        title: "Rating submitted! 🌟",
+        description: `You've earned $${taskPayment}! Great job on completing this task.`,
       });
 
       onComplete();
     } catch (error) {
       console.error('Error submitting rating:', error);
       toast({
-        title: "Failed to submit rating",
-        description: "Please try again",
+        title: "Error submitting rating",
+        description: "Please try again.",
         variant: "destructive"
       });
     } finally {

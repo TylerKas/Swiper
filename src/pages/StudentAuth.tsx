@@ -116,31 +116,6 @@ const StudentAuth = () => {
         return;
       }
 
-      // Update profile with additional information
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          full_name: data.fullName,
-          email: data.email,
-          school_email: data.schoolEmail,
-          university: data.university,
-          phone: data.phone,
-          bio: data.bio || '',
-          address: data.address,
-          city: data.city,
-          state: data.state,
-          zip_code: data.zipCode,
-          miles_radius: data.milesRadius,
-          preferences: data.preferences,
-          time_commitment: data.timeCommitment,
-          user_type: 'student'
-        })
-        .eq('email', data.email);
-
-      if (profileError) {
-        console.error('Profile update error:', profileError);
-      }
-
       toast({
         title: 'Account Created!',
         description: 'Please check your email to verify your account.'

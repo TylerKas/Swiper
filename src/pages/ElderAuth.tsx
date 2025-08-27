@@ -79,23 +79,6 @@ const ElderAuth = () => {
         return;
       }
 
-      // Update profile with additional information
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          full_name: data.fullName,
-          email: data.email,
-          phone: data.phone,
-          location: data.location,
-          miles_radius: data.milesRadius,
-          user_type: 'elder'
-        })
-        .eq('email', data.email);
-
-      if (profileError) {
-        console.error('Profile update error:', profileError);
-      }
-
       toast({
         title: 'Account Created!',
         description: 'Please check your email to verify your account.'

@@ -192,8 +192,16 @@ const ActiveTasksList = ({ userType }: ActiveTasksListProps) => {
         taskPayment={selectedTask.task.payment}
         taskLocation={selectedTask.task.location}
         taskTimeEstimate={selectedTask.task.time_estimate}
-        onComplete={handleRatingComplete}
-        onSkip={handleRatingComplete}
+        onComplete={async () => {
+          await fetchActiveTasks();
+          setShowRating(false);
+          setSelectedTask(null);
+        }}
+        onSkip={async () => {
+          await fetchActiveTasks();
+          setShowRating(false);
+          setSelectedTask(null);
+        }}
       />
     );
   }
