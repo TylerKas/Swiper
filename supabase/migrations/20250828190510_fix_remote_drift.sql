@@ -1,4 +1,6 @@
--- Create task_status enum if missing
+-- Fix remote schema drift: ensure tables/columns, RLS, policies, and RPCs exist
+
+-- Ensure enums
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'task_status') THEN
@@ -6,29 +8,66 @@ BEGIN
   END IF;
 END$$;
 
--- Create tasks table
+-- Ensure tasks table exists (no-op if already present)
 CREATE TABLE IF NOT EXISTS public.tasks (
-  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  elder_id UUID NOT NULL,
-  title TEXT NOT NULL,
-  description TEXT,
-  category TEXT,
-  budget NUMERIC(10,2),
-  latitude DOUBLE PRECISION,
-  longitude DOUBLE PRECISION,
-  status task_status NOT NULL DEFAULT 'available',
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  CONSTRAINT tasks_elder_fk FOREIGN KEY (elder_id) REFERENCES public.profiles(id) ON DELETE CASCADE
+  id uuid primary key default gen_random_uuid(),
+  elder_id uuid not null,
+  title text not null,
+  description text,
+  category text,
+  budget numeric(10,2),
+  latitude double precision,
+  longitude double precision,
+  status task_status not null default 'available',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
--- Indexes for tasks
-CREATE INDEX IF NOT EXISTS tasks_status_idx ON public.tasks (status);
-CREATE INDEX IF NOT EXISTS tasks_created_at_idx ON public.tasks (created_at DESC);
+-- Ensure dismissed_tasks exists before enabling RLS
+CREATE TABLE IF NOT EXISTS public.dismissed_tasks (
+  id uuid primary key default gen_random_uuid(),
+  task_id uuid not null references public.tasks(id) on delete cascade,
+  student_id uuid not null references public.profiles(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  constraint dismissed_tasks_unique unique (task_id, student_id)
+);
 
--- RLS for tasks
+-- Ensure completed_tasks exists before adding elder_id
+CREATE TABLE IF NOT EXISTS public.completed_tasks (
+  id uuid primary key default gen_random_uuid(),
+  task_id uuid not null references public.tasks(id) on delete cascade,
+  student_id uuid not null references public.profiles(id) on delete cascade,
+  -- elder_id may be added below if missing
+  amount numeric(10,2) not null default 0,
+  completed_at timestamptz not null default now()
+);
+
+-- Ensure completed_tasks.elder_id exists
+ALTER TABLE public.completed_tasks
+  ADD COLUMN IF NOT EXISTS elder_id uuid;
+
+-- Add FK constraint for completed_tasks.elder_id if missing
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.table_constraints c
+    WHERE c.table_schema = 'public'
+      AND c.table_name = 'completed_tasks'
+      AND c.constraint_name = 'completed_tasks_elder_fk'
+  ) THEN
+    ALTER TABLE public.completed_tasks
+      ADD CONSTRAINT completed_tasks_elder_fk
+      FOREIGN KEY (elder_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+  END IF;
+END$$;
+
+-- Enable RLS on key tables
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.dismissed_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.completed_tasks ENABLE ROW LEVEL SECURITY;
 
+-- Policies for tasks
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -71,7 +110,7 @@ BEGIN
     EXECUTE $policy$
       CREATE POLICY tasks_select_available_or_own ON public.tasks
       FOR SELECT USING (
-        tasks.status = 'available'
+        (status = 'available')
         OR EXISTS (
           SELECT 1 FROM public.profiles p
           WHERE p.id = tasks.elder_id AND p.user_id = auth.uid()
@@ -81,30 +120,7 @@ BEGIN
   END IF;
 END$$;
 
--- Timestamp trigger for tasks
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger WHERE tgname = 'update_tasks_updated_at'
-  ) THEN
-    CREATE TRIGGER update_tasks_updated_at
-    BEFORE UPDATE ON public.tasks
-    FOR EACH ROW
-    EXECUTE FUNCTION public.update_updated_at_column();
-  END IF;
-END$$;
-
--- Dismissed tasks (student swiped left)
-CREATE TABLE IF NOT EXISTS public.dismissed_tasks (
-  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  task_id UUID NOT NULL REFERENCES public.tasks(id) ON DELETE CASCADE,
-  student_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-  CONSTRAINT dismissed_tasks_unique UNIQUE (task_id, student_id)
-);
-
-ALTER TABLE public.dismissed_tasks ENABLE ROW LEVEL SECURITY;
-
+-- Policies for dismissed_tasks
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -127,18 +143,7 @@ BEGIN
   END IF;
 END$$;
 
--- Completed tasks and earnings
-CREATE TABLE IF NOT EXISTS public.completed_tasks (
-  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  task_id UUID NOT NULL REFERENCES public.tasks(id) ON DELETE CASCADE,
-  student_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  elder_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  amount NUMERIC(10,2) NOT NULL DEFAULT 0,
-  completed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.completed_tasks ENABLE ROW LEVEL SECURITY;
-
+-- Policies for completed_tasks
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -169,29 +174,27 @@ BEGIN
   END IF;
 END$$;
 
--- RPC: swipe_right to create match and lock the task
-CREATE OR REPLACE FUNCTION public.swipe_right(p_task_id UUID, p_student_id UUID)
-RETURNS VOID
+-- Recreate RPCs with robust typing (text-compatible)
+CREATE OR REPLACE FUNCTION public.swipe_right(p_task_id uuid, p_student_id uuid)
+RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_status task_status;
-  v_elder UUID;
-  v_is_student BOOLEAN;
+  v_status text;
+  v_elder uuid;
+  v_is_student boolean;
 BEGIN
-  -- Verify caller owns the provided student profile and is a student
   SELECT (p.user_type = 'student') INTO v_is_student
   FROM public.profiles p
   WHERE p.id = p_student_id AND p.user_id = auth.uid();
 
-  IF NOT COALESCE(v_is_student, FALSE) THEN
+  IF NOT coalesce(v_is_student, false) THEN
     RAISE EXCEPTION 'Unauthorized student profile';
   END IF;
 
-  -- Lock task and validate availability
-  SELECT t.status, t.elder_id INTO v_status, v_elder
+  SELECT t.status::text, t.elder_id INTO v_status, v_elder
   FROM public.tasks t
   WHERE t.id = p_task_id
   FOR UPDATE;
@@ -204,12 +207,10 @@ BEGIN
     RAISE EXCEPTION 'Task not available';
   END IF;
 
-  -- Prevent elders from matching their own task via their student profile
   IF EXISTS (SELECT 1 FROM public.profiles ep WHERE ep.id = v_elder AND ep.user_id = auth.uid()) THEN
     RAISE EXCEPTION 'Cannot match your own task';
   END IF;
 
-  -- Create a match (if not exists) and set task to matched
   INSERT INTO public.matches (task_id, student_id, elder_id, status)
   VALUES (p_task_id, p_student_id, v_elder, 'pending')
   ON CONFLICT DO NOTHING;
@@ -218,29 +219,26 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.swipe_right(UUID, UUID) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.swipe_right(uuid, uuid) TO anon, authenticated;
 
--- RPC: complete_task to mark completion and record payout
-CREATE OR REPLACE FUNCTION public.complete_task(p_task_id UUID, p_student_id UUID, p_amount NUMERIC)
-RETURNS VOID
+CREATE OR REPLACE FUNCTION public.complete_task(p_task_id uuid, p_student_id uuid, p_amount numeric)
+RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_student_ok BOOLEAN;
-  v_elder UUID;
+  v_student_ok boolean;
+  v_elder uuid;
 BEGIN
-  -- Verify caller owns the provided student profile
   SELECT TRUE INTO v_student_ok
   FROM public.profiles p
   WHERE p.id = p_student_id AND p.user_id = auth.uid();
 
-  IF NOT COALESCE(v_student_ok, FALSE) THEN
+  IF NOT coalesce(v_student_ok, false) THEN
     RAISE EXCEPTION 'Unauthorized student profile';
   END IF;
 
-  -- Get elder and move task to completed
   SELECT t.elder_id INTO v_elder FROM public.tasks t WHERE t.id = p_task_id;
   IF v_elder IS NULL THEN
     RAISE EXCEPTION 'Task not found';
@@ -249,8 +247,9 @@ BEGIN
   UPDATE public.tasks SET status = 'completed' WHERE id = p_task_id AND status IN ('in_progress','matched');
 
   INSERT INTO public.completed_tasks (task_id, student_id, elder_id, amount)
-  VALUES (p_task_id, p_student_id, v_elder, COALESCE(p_amount, 0));
+  VALUES (p_task_id, p_student_id, v_elder, coalesce(p_amount, 0));
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.complete_task(UUID, UUID, NUMERIC) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.complete_task(uuid, uuid, numeric) TO anon, authenticated;
+
