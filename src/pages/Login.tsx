@@ -189,6 +189,15 @@ const Login = () => {
               Continue with Google
             </Button>
 
+            <div className="text-center">
+              <Button 
+                variant="link" 
+                onClick={() => navigate('/signup')}
+                className="text-primary"
+              >
+                Don't have an account? Sign up
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </main>
