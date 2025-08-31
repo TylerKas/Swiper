@@ -11,7 +11,8 @@ import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { supabase } from '@/integrations/supabase/client';
+// TODO: Replace with Firebase auth
+// import { auth } from '@/firebase/config';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -94,31 +95,11 @@ const StudentAuth = () => {
   const handleSignup = async (data: SignupForm) => {
     setLoading(true);
     try {
-      const redirectUrl = `${window.location.origin}/student`;
-      
-      const { error: signUpError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            full_name: data.fullName
-          }
-        }
-      });
-
-      if (signUpError) {
-        toast({
-          title: 'Signup Error',
-          description: signUpError.message,
-          variant: 'destructive'
-        });
-        return;
-      }
-
+      // TODO: Replace with Firebase createUserWithEmailAndPassword
       toast({
-        title: 'Account Created!',
-        description: 'Please check your email to verify your account.'
+        title: 'Feature Coming Soon',
+        description: 'Student signup will be available once Firebase is integrated.',
+        variant: 'destructive'
       });
     } catch (error) {
       toast({
@@ -134,21 +115,12 @@ const StudentAuth = () => {
   const handleLogin = async (data: LoginForm) => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password
+      // TODO: Replace with Firebase signInWithEmailAndPassword
+      toast({
+        title: 'Feature Coming Soon',
+        description: 'Student login will be available once Firebase is integrated.',
+        variant: 'destructive'
       });
-
-      if (error) {
-        toast({
-          title: 'Login Error',
-          description: error.message,
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      navigate('/student');
     } catch (error) {
       toast({
         title: 'Error',

@@ -1,10 +1,10 @@
 import React from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+// TODO: Replace with Firebase auth imports
+// import { auth } from '@/firebase/config';
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: any | null; // TODO: Replace with Firebase User type
+  session: any | null; // TODO: Replace with Firebase session type
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -20,32 +20,27 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = React.useState<User | null>(null);
-  const [session, setSession] = React.useState<Session | null>(null);
+  const [user, setUser] = React.useState<any | null>(null);
+  const [session, setSession] = React.useState<any | null>(null);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    // TODO: Replace with Firebase auth state listener
+    // const unsubscribe = onAuthStateChanged(auth, (user) => {
+    //   setUser(user);
+    //   setSession(user ? { user } : null);
+    //   setLoading(false);
+    // });
+    // return unsubscribe;
+    
+    // Temporary: Set loading to false to prevent infinite loading
+    setLoading(false);
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    // TODO: Replace with Firebase signOut
+    // await signOut(auth);
+    console.log('Sign out functionality will be implemented with Firebase');
   };
 
   const value = {
