@@ -177,6 +177,7 @@ const StudentDashboard = () => {
               variant="ghost" 
               size="icon"
               onClick={() => navigate('/')}
+              className="hover:bg-gray-100"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>

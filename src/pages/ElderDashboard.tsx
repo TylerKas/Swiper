@@ -160,12 +160,23 @@ const ElderDashboard = () => {
       {/* Header */}
       <header className="bg-white border-b">
         <div className="container mx-auto px-4 py-6">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Plus className="h-8 w-8 text-white" />
+          <div className="flex items-center justify-between">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => navigate('/')}
+              className="hover:bg-gray-100"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="text-center flex-1">
+              <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Plus className="h-8 w-8 text-white" />
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Post a Task</h1>
+              <p className="text-gray-600">Tell us what help you need and we'll connect you with a student</p>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Post a Task</h1>
-            <p className="text-gray-600">Tell us what help you need and we'll connect you with a student</p>
+            <div className="w-10"></div>
           </div>
         </div>
       </header>
