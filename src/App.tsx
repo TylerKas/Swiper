@@ -7,8 +7,8 @@ import { AuthProvider } from "./contexts/AuthContext";
 import Index from "./pages/Index";
 import StudentDashboard from "./pages/StudentDashboard";
 import ElderDashboard from "./pages/ElderDashboard";
-import StudentAuth from "./pages/StudentAuth";
-import ElderAuth from "./pages/ElderAuth";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
@@ -23,8 +23,8 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/student-auth" element={<StudentAuth />} />
-            <Route path="/elder-auth" element={<ElderAuth />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
             <Route path="/student" element={<StudentDashboard />} />
             <Route path="/elder" element={<ElderDashboard />} />
             <Route path="/profile" element={<Profile />} />

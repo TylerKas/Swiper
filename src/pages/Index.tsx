@@ -33,16 +33,16 @@ const Index = () => {
               <>
                 <Button
                   variant="ghost"
-                  onClick={() => navigate('/student-auth')}
+                  onClick={() => navigate('/login')}
                   className="text-white hover:bg-white/20"
                 >
-                  Sign In
+                  Log In
                 </Button>
                 <Button
-                  onClick={() => navigate('/elder-auth')}
+                  onClick={() => navigate('/signup')}
                   className="bg-white text-primary hover:bg-white/90"
                 >
-                  Get Started
+                  Sign Up
                 </Button>
               </>
             )}
@@ -65,32 +65,14 @@ const Index = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Card className="bg-white/10 backdrop-blur border-white/20 hover:bg-white/20 transition-all duration-300 cursor-pointer group" 
-                    onClick={() => navigate('/student-auth')}>
-                <CardContent className="p-6 text-center space-y-4">
-                  <div className="mx-auto w-16 h-16 bg-white/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Users className="h-8 w-8 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-semibold text-white">I'm a Student</h3>
-                    <p className="text-white/80 text-sm">Find tasks & earn money</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white/10 backdrop-blur border-white/20 hover:bg-white/20 transition-all duration-300 cursor-pointer group"
-                    onClick={() => navigate('/elder-auth')}>
-                <CardContent className="p-6 text-center space-y-4">
-                  <div className="mx-auto w-16 h-16 bg-white/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <HandHeart className="h-8 w-8 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-semibold text-white">I Need Help</h3>
-                    <p className="text-white/80 text-sm">Post tasks & get assistance</p>
-                  </div>
-                </CardContent>
-              </Card>
+            <div className="flex justify-center">
+              <Button
+                size="lg"
+                onClick={() => navigate('/signup')}
+                className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-4"
+              >
+                Get Started Today
+              </Button>
             </div>
           </div>
 

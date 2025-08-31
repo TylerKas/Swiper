@@ -1,10 +1,10 @@
 import React from 'react';
-// TODO: Replace with Firebase auth imports
-// import { auth } from '@/firebase/config';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
-  user: any | null; // TODO: Replace with Firebase User type
-  session: any | null; // TODO: Replace with Firebase session type
+  user: User | null;
+  session: Session | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -20,27 +20,32 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = React.useState<any | null>(null);
-  const [session, setSession] = React.useState<any | null>(null);
+  const [user, setUser] = React.useState<User | null>(null);
+  const [session, setSession] = React.useState<Session | null>(null);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
-    // TODO: Replace with Firebase auth state listener
-    // const unsubscribe = onAuthStateChanged(auth, (user) => {
-    //   setUser(user);
-    //   setSession(user ? { user } : null);
-    //   setLoading(false);
-    // });
-    // return unsubscribe;
-    
-    // Temporary: Set loading to false to prevent infinite loading
-    setLoading(false);
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const signOut = async () => {
-    // TODO: Replace with Firebase signOut
-    // await signOut(auth);
-    console.log('Sign out functionality will be implemented with Firebase');
+    await supabase.auth.signOut();
   };
 
   const value = {
