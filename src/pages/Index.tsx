@@ -21,13 +21,13 @@ const Index = () => {
           
           <div className="flex items-center space-x-4">
             {user ? (
-              <Button
-                variant="secondary"
+              <Button 
                 onClick={() => navigate('/profile')}
-                className="bg-white/20 backdrop-blur border-white/20 text-white hover:bg-white/30"
+                variant="ghost"
+                size="icon"
+                className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/30"
               >
-                <User className="h-4 w-4 mr-2" />
-                Profile
+                <User className="h-5 w-5" />
               </Button>
             ) : (
               <>

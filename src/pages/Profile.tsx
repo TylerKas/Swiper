@@ -1,48 +1,55 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Slider } from "@/components/ui/slider";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Camera } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Slider } from '@/components/ui/slider';
+import { useToast } from '@/hooks/use-toast';
+import { ArrowLeft, User, MapPin, Mail, Phone, Upload, Heart } from 'lucide-react';
+
+interface ProfileData {
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  bio?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  miles_radius?: number;
+  avatar_url?: string;
+}
 
 const Profile = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  
   const [loading, setLoading] = useState(false);
-  const [profile, setProfile] = useState({
+  const [profileData, setProfileData] = useState<ProfileData>({
     full_name: '',
+    email: '',
     phone: '',
     bio: '',
     address: '',
     city: '',
     state: '',
     zip_code: '',
-    miles_radius: [10],
+    miles_radius: 10,
+    avatar_url: '',
   });
 
-  useEffect(() => {
-    if (!user) {
-      navigate('/');
-      return;
-    }
-    fetchProfile();
-  }, [user, navigate]);
-
   const fetchProfile = async () => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -51,68 +58,79 @@ const Profile = () => {
       }
 
       if (data) {
-        setProfile({
+        setProfileData({
           full_name: data.full_name || '',
+          email: data.email || user.email || '',
           phone: data.phone || '',
           bio: data.bio || '',
           address: data.address || '',
           city: data.city || '',
           state: data.state || '',
           zip_code: data.zip_code || '',
-          miles_radius: [data.miles_radius || 10],
+          miles_radius: data.miles_radius || 10,
+          avatar_url: data.avatar_url || '',
         });
+      } else {
+        setProfileData(prev => ({ ...prev, email: user.email || '' }));
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
   };
 
+  useEffect(() => {
+    fetchProfile();
+  }, [user]);
+
   const handleInputChange = (field: string, value: string) => {
-    setProfile(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setProfileData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleRadiusChange = (value: number[]) => {
-    setProfile(prev => ({
-      ...prev,
-      miles_radius: value
-    }));
+    setProfileData(prev => ({ ...prev, miles_radius: value[0] }));
   };
 
   const handleSave = async () => {
     if (!user) return;
-    
-    setLoading(true);
+
     try {
+      setLoading(true);
+
       const { error } = await supabase
         .from('profiles')
         .upsert({
           user_id: user.id,
-          full_name: profile.full_name,
-          phone: profile.phone,
-          bio: profile.bio,
-          address: profile.address,
-          city: profile.city,
-          state: profile.state,
-          zip_code: profile.zip_code,
-          miles_radius: profile.miles_radius[0],
+          full_name: profileData.full_name,
+          email: profileData.email,
+          phone: profileData.phone,
+          bio: profileData.bio,
+          address: profileData.address,
+          city: profileData.city,
+          state: profileData.state,
+          zip_code: profileData.zip_code,
+          miles_radius: profileData.miles_radius,
+          updated_at: new Date().toISOString(),
         });
 
       if (error) {
-        throw error;
+        toast({
+          title: "Error",
+          description: "Failed to save profile",
+          variant: "destructive",
+        });
+        return;
       }
 
       toast({
-        title: "Profile updated",
-        description: "Your profile has been successfully updated.",
+        title: "Success",
+        description: "Profile saved successfully",
       });
+
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error('Error saving profile:', error);
       toast({
         title: "Error",
-        description: "Failed to update profile. Please try again.",
+        description: "An unexpected error occurred",
         variant: "destructive",
       });
     } finally {
@@ -120,183 +138,241 @@ const Profile = () => {
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase();
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
+
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // For now, just show a toast. File upload can be implemented later with storage
+      toast({
+        title: "Photo Upload",
+        description: "Photo upload feature coming soon!",
+      });
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-primary">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <Button
-            variant="ghost"
-            onClick={() => navigate('/')}
-            className="text-white hover:bg-white/20 mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Home
-          </Button>
-        </div>
-
-        <Card className="max-w-2xl mx-auto bg-white/95 backdrop-blur">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-center">Profile</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Profile Photo Section */}
-            <div className="flex flex-col items-center space-y-4">
-              <div className="relative">
-                <Avatar className="h-24 w-24">
-                  <AvatarFallback className="text-xl bg-primary text-primary-foreground">
-                    {profile.full_name ? getInitials(profile.full_name) : 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <Button
-                  size="sm"
-                  className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
-                >
-                  <Camera className="h-4 w-4" />
-                </Button>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white border-b">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex items-center justify-between">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => navigate('/')}
+              className="hover:bg-gray-100"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="text-center flex-1">
+              <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Heart className="h-8 w-8 text-white" />
               </div>
-              <p className="text-sm text-muted-foreground">Click to change photo</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Join HelpMate</h1>
+              <p className="text-gray-600">Create your profile to get started</p>
+            </div>
+            <Button 
+              variant="outline"
+              onClick={handleSignOut}
+              className="text-red-600 border-red-600 hover:bg-red-50"
+            >
+              Sign Out
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <Card className="p-8">
+          {/* Personal Information Section */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+              <User className="h-5 w-5 mr-2" />
+              Personal Information
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div>
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  value={profileData.full_name?.split(' ')[0] || ''}
+                  onChange={(e) => {
+                    const lastName = profileData.full_name?.split(' ').slice(1).join(' ') || '';
+                    handleInputChange('full_name', `${e.target.value} ${lastName}`.trim());
+                  }}
+                  placeholder="John"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  value={profileData.full_name?.split(' ').slice(1).join(' ') || ''}
+                  onChange={(e) => {
+                    const firstName = profileData.full_name?.split(' ')[0] || '';
+                    handleInputChange('full_name', `${firstName} ${e.target.value}`.trim());
+                  }}
+                  placeholder="Doe"
+                  className="mt-1"
+                />
+              </div>
             </div>
 
-            {/* Bio Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Personal Information</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input
-                    id="firstName"
-                    value={profile.full_name.split(' ')[0] || ''}
-                    onChange={(e) => {
-                      const lastName = profile.full_name.split(' ').slice(1).join(' ');
-                      handleInputChange('full_name', `${e.target.value} ${lastName}`.trim());
-                    }}
-                    placeholder="Enter first name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    value={profile.full_name.split(' ').slice(1).join(' ') || ''}
-                    onChange={(e) => {
-                      const firstName = profile.full_name.split(' ')[0] || '';
-                      handleInputChange('full_name', `${firstName} ${e.target.value}`.trim());
-                    }}
-                    placeholder="Enter last name"
-                  />
-                </div>
+            <div className="mb-6">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative mt-1">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={profileData.email || ''}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  placeholder="john@gmail.com"
+                  className="pl-10"
+                />
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
+            <div className="mb-6">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="Choose a password"
+                className="mt-1"
+                disabled
+              />
+              <p className="text-sm text-gray-500 mt-1">Password cannot be changed here</p>
+            </div>
+
+            <div className="mb-6">
+              <Label htmlFor="phone">Phone Number</Label>
+              <div className="relative mt-1">
+                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   id="phone"
-                  type="tel"
-                  value={profile.phone}
+                  value={profileData.phone || ''}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
                   placeholder="(555) 123-4567"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bio">Bio (Optional)</Label>
-                <Textarea
-                  id="bio"
-                  value={profile.bio}
-                  onChange={(e) => handleInputChange('bio', e.target.value)}
-                  placeholder="Tell us about yourself..."
-                  className="min-h-[80px]"
+                  className="pl-10"
                 />
               </div>
             </div>
 
-            {/* Location Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Location</h3>
-              
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
+            <div className="mb-6">
+              <Label htmlFor="bio">Bio (Optional)</Label>
+              <Textarea
+                id="bio"
+                value={profileData.bio || ''}
+                onChange={(e) => handleInputChange('bio', e.target.value)}
+                placeholder="Tell us about yourself..."
+                className="mt-1 min-h-[80px]"
+              />
+            </div>
+
+            <div className="mb-6">
+              <Label htmlFor="photo">Profile Photo (Optional)</Label>
+              <div className="mt-1">
+                <label className="flex items-center justify-center w-full h-12 border-2 border-dashed border-gray-300 rounded-md cursor-pointer hover:border-orange-400 transition-colors">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                  <Upload className="h-4 w-4 mr-2 text-gray-400" />
+                  <span className="text-gray-600">Upload Photo</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Location Section */}
+          <div className="mb-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+              <MapPin className="h-5 w-5 mr-2" />
+              Location
+            </h3>
+            
+            <div className="mb-6">
+              <Label htmlFor="address">Address</Label>
+              <Input
+                id="address"
+                value={profileData.address || ''}
+                onChange={(e) => handleInputChange('address', e.target.value)}
+                placeholder="123 Main Street"
+                className="mt-1"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div>
+                <Label htmlFor="city">City</Label>
                 <Input
-                  id="address"
-                  value={profile.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
-                  placeholder="123 Main Street"
+                  id="city"
+                  value={profileData.city || ''}
+                  onChange={(e) => handleInputChange('city', e.target.value)}
+                  placeholder="Los Angeles"
+                  className="mt-1"
                 />
               </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="city">City</Label>
-                  <Input
-                    id="city"
-                    value={profile.city}
-                    onChange={(e) => handleInputChange('city', e.target.value)}
-                    placeholder="City"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="state">State</Label>
-                  <Input
-                    id="state"
-                    value={profile.state}
-                    onChange={(e) => handleInputChange('state', e.target.value)}
-                    placeholder="CA"
-                    maxLength={2}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="zipCode">Zip Code</Label>
-                  <Input
-                    id="zipCode"
-                    value={profile.zip_code}
-                    onChange={(e) => handleInputChange('zip_code', e.target.value)}
-                    placeholder="12345"
-                  />
-                </div>
+              <div>
+                <Label htmlFor="state">State</Label>
+                <Input
+                  id="state"
+                  value={profileData.state || ''}
+                  onChange={(e) => handleInputChange('state', e.target.value)}
+                  placeholder="CA"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="zipCode">ZIP Code</Label>
+                <Input
+                  id="zipCode"
+                  value={profileData.zip_code || ''}
+                  onChange={(e) => handleInputChange('zip_code', e.target.value)}
+                  placeholder="90210"
+                  className="mt-1"
+                />
               </div>
             </div>
 
-            {/* Miles Radius Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Search Radius</h3>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Miles Away</Label>
-                  <span className="text-sm font-medium">{profile.miles_radius[0]} miles</span>
-                </div>
-                <Slider
-                  value={profile.miles_radius}
-                  onValueChange={handleRadiusChange}
-                  max={50}
-                  min={1}
-                  step={1}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>1 mile</span>
-                  <span>50 miles</span>
-                </div>
-              </div>
+            <div className="mb-8">
+              <Label>Miles Away Radius: {profileData.miles_radius} miles</Label>
+              <Slider
+                value={[profileData.miles_radius || 10]}
+                onValueChange={handleRadiusChange}
+                max={50}
+                min={1}
+                step={1}
+                className="mt-3"
+              />
             </div>
+          </div>
 
+          <div className="flex gap-4">
             <Button 
-              onClick={handleSave} 
-              disabled={loading}
-              className="w-full"
+              onClick={() => navigate('/')}
+              variant="outline"
+              className="flex-1"
             >
-              {loading ? 'Saving...' : 'Save Profile'}
+              Back to Home
             </Button>
-          </CardContent>
+            <Button 
+              onClick={handleSave}
+              className="flex-1 bg-orange-500 hover:bg-orange-600"
+              disabled={loading}
+            >
+              {loading ? "Saving..." : "Save Profile"}
+            </Button>
+          </div>
         </Card>
       </div>
     </div>
