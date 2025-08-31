@@ -49,14 +49,14 @@ const StudentDashboard = () => {
         const mockTasks: Task[] = [
           {
             id: '1',
-            title: 'Help with grocery shopping',
-            description: 'Need assistance with weekly grocery shopping',
-            elderName: 'Margaret Thompson',
+            title: 'IPAD KID',
+            description: 'Help test',
+            elderName: 'JACK KENNEDY',
             elder_id: 'elder1',
-            location: 'Downtown',
-            payment: 25,
-            timeEstimate: '2 hours',
-            category: 'Shopping',
+            location: 'Los Angeles',
+            payment: 99.98,
+            timeEstimate: '1 hour',
+            category: 'Tech Help',
             urgency: 'This week'
           },
           {
@@ -168,110 +168,84 @@ const StudentDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-secondary">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white/50 backdrop-blur border-b border-white/20">
+      <header className="bg-white border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <Button 
               variant="ghost" 
               size="icon"
               onClick={() => navigate('/')}
-              className="hover:bg-white/20"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-xl font-semibold">
-              {activeView === 'discover' ? 'Find Tasks' : 'Active Tasks'}
+            <h1 className="text-xl font-semibold text-gray-900">
+              Find Tasks
             </h1>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => setActiveView(activeView === 'discover' ? 'active' : 'discover')}
-              className="hover:bg-white/20"
-            >
-              <MessageSquare className="h-5 w-5" />
-            </Button>
+            <div className="w-10"></div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-4 min-h-[calc(100vh-120px)]">
+      <main className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[calc(100vh-120px)]">
         {activeView === 'discover' ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="w-full max-w-sm">
-              <Card className="bg-white shadow-card-custom border-0 overflow-hidden">
-                <CardContent className="p-0">
-                  {/* Task Header */}
-                  <div className="bg-gradient-warm p-6 text-white">
-                    <div className="flex items-center justify-between mb-2">
-                      <Badge variant="secondary" className="bg-white/20 text-white border-0">
-                        {currentTask.category}
-                      </Badge>
-                      <Badge variant="secondary" className="bg-white/20 text-white border-0">
-                        {currentTask.urgency}
-                      </Badge>
-                    </div>
-                    <h2 className="text-xl font-bold mb-2">{currentTask.title}</h2>
-                    <p className="text-sm opacity-90">{currentTask.elderName}, {currentTask.elderAge}</p>
+          <div className="w-full max-w-sm">
+            <div className="bg-gradient-to-br from-orange-400 to-orange-500 rounded-3xl shadow-xl overflow-hidden text-white relative">
+              {/* Task Header */}
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-6">
+                  <div className="bg-white/20 backdrop-blur rounded-full px-3 py-1 text-sm font-medium">
+                    {currentTask.category}
                   </div>
-
-                  {/* Task Details */}
-                  <div className="p-6 space-y-4">
-                    <p className="text-gray-700 leading-relaxed">
-                      {currentTask.description}
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center space-x-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{currentTask.location}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{currentTask.timeEstimate}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-center space-x-2 bg-gradient-primary p-3 rounded-lg">
-                      <DollarSign className="h-5 w-5 text-white" />
-                      <span className="text-xl font-bold text-white">${currentTask.payment}</span>
-                    </div>
+                  <div className="bg-white/20 backdrop-blur rounded-full px-3 py-1 text-sm font-medium">
+                    {currentTask.urgency}
                   </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex p-6 pt-0 space-x-4">
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      className="flex-1 border-2 border-red-200 hover:bg-red-50 hover:border-red-300"
-                      onClick={() => handleSwipe('left')}
-                    >
-                      <X className="h-6 w-6 text-red-500" />
-                    </Button>
-                    <Button
-                      size="lg"
-                      className="flex-1 bg-gradient-primary hover:opacity-90"
-                      onClick={() => handleSwipe('right')}
-                    >
-                      <Heart className="h-6 w-6" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Progress Indicator */}
-              <div className="flex justify-center mt-6 space-x-2">
-                {tasks.map((_, index) => (
-                  <div
-                    key={index}
-                    className={`w-2 h-2 rounded-full ${
-                      index === currentTaskIndex ? 'bg-primary' : 'bg-gray-300'
-                    }`}
-                  />
-                ))}
+                </div>
+                
+                <h2 className="text-3xl font-bold mb-2 uppercase tracking-wide">{currentTask.title}</h2>
+                <p className="text-lg font-medium uppercase tracking-wide opacity-90">{currentTask.elderName}</p>
+                <p className="text-sm opacity-75 mt-6">{currentTask.description}</p>
               </div>
+
+              {/* Task Details */}
+              <div className="px-6 pb-6">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="h-4 w-4 opacity-80" />
+                    <span className="text-sm">{currentTask.location}</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Clock className="h-4 w-4 opacity-80" />
+                    <span className="text-sm">{currentTask.timeEstimate}</span>
+                  </div>
+                </div>
+
+                {/* Payment Badge */}
+                <div className="bg-white/20 backdrop-blur rounded-2xl p-4 text-center mb-8">
+                  <span className="text-2xl font-bold">${currentTask.payment}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-center items-center space-x-8 mt-12">
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-16 h-16 rounded-full border-2 border-gray-300 bg-white hover:bg-gray-50 shadow-lg"
+                onClick={() => handleSwipe('left')}
+              >
+                <X className="h-8 w-8 text-red-500" />
+              </Button>
+              <Button
+                size="lg"
+                className="w-16 h-16 rounded-full bg-white border-2 border-orange-300 hover:bg-orange-50 shadow-lg"
+                onClick={() => handleSwipe('right')}
+              >
+                <Heart className="h-8 w-8 text-orange-500" />
+              </Button>
             </div>
           </div>
         ) : (
