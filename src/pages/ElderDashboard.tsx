@@ -37,12 +37,12 @@ const ElderDashboard = () => {
     }
   });
 
-  // Redirect if not authenticated
-  React.useEffect(() => {
-    if (!loading && !user) {
-      navigate('/elder-auth');
-    }
-  }, [user, loading, navigate]);
+  // Optional: Redirect if not authenticated (commented out for now)
+  // React.useEffect(() => {
+  //   if (!loading && !user) {
+  //     navigate('/login');
+  //   }
+  // }, [user, loading, navigate]);
 
   const categories = [
     "Shopping",

@@ -37,7 +37,7 @@ const StudentDashboard = () => {
   // TODO: Replace with Firebase Firestore query
   useEffect(() => {
     const fetchTasks = async () => {
-      if (!user) return;
+      // Removed authentication check - allow access without login for now
       
       try {
         // TODO: Replace with Firebase query
@@ -87,16 +87,16 @@ const StudentDashboard = () => {
     };
 
     fetchTasks();
-  }, [user, toast]);
+  }, [toast]);
 
   const currentTask = tasks[currentTaskIndex];
 
-  // Redirect if not authenticated
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/student-auth');
-    }
-  }, [user, loading, navigate]);
+  // Optional: Redirect if not authenticated (commented out for now)
+  // useEffect(() => {
+  //   if (!loading && !user) {
+  //     navigate('/login');
+  //   }
+  // }, [user, loading, navigate]);
 
   const handleSwipe = async (direction: 'left' | 'right') => {
     if (direction === 'right') {
