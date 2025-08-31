@@ -5,9 +5,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Star, DollarSign, Clock, MapPin } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-// TODO: Replace with Firebase Firestore
-// import { db } from '@/firebase/config';
 import { useToast } from "@/hooks/use-toast";
 
 interface RatingInterfaceProps {
@@ -39,7 +36,6 @@ const RatingInterface = ({
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const { user } = useAuth();
   const { toast } = useToast();
 
   const handleSubmitRating = async () => {
@@ -47,29 +43,6 @@ const RatingInterface = ({
 
     setSubmitting(true);
     try {
-      // TODO: Replace with Firebase Firestore operations
-      // const ratingsRef = collection(db, 'ratings');
-      // await addDoc(ratingsRef, {
-      //   task_id: taskId,
-      //   rater_id: user?.uid,
-      //   rated_id: otherUserId,
-      //   rating: rating,
-      //   comment: comment.trim() || null,
-      //   created_at: serverTimestamp()
-      // });
-
-      // const completedTasksRef = collection(db, 'completed_tasks');
-      // await addDoc(completedTasksRef, {
-      //   task_id: taskId,
-      //   student_id: otherUserType === 'student' ? otherUserId : user?.uid,
-      //   amount_earned: taskPayment,
-      //   rating_given: rating,
-      //   completed_at: serverTimestamp()
-      // });
-
-      // const taskRef = doc(db, 'tasks', taskId);
-      // await updateDoc(taskRef, { status: 'completed' });
-
       toast({
         title: "Rating submitted! 🌟",
         description: `You've earned $${taskPayment}! Great job on completing this task.`,

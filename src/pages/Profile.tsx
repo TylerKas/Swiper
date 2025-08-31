@@ -1,7 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,7 +24,6 @@ interface ProfileData {
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData>({
@@ -42,46 +39,6 @@ const Profile = () => {
     avatar_url: '',
   });
 
-  const fetchProfile = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
-        return;
-      }
-
-      if (data) {
-        setProfileData({
-          full_name: data.full_name || '',
-          email: data.email || user.email || '',
-          phone: data.phone || '',
-          bio: data.bio || '',
-          address: data.address || '',
-          city: data.city || '',
-          state: data.state || '',
-          zip_code: data.zip_code || '',
-          miles_radius: data.miles_radius || 10,
-          avatar_url: data.avatar_url || '',
-        });
-      } else {
-        setProfileData(prev => ({ ...prev, email: user.email || '' }));
-      }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    }
-  };
-
-  useEffect(() => {
-    fetchProfile();
-  }, [user]);
-
   const handleInputChange = (field: string, value: string) => {
     setProfileData(prev => ({ ...prev, [field]: value }));
   };
@@ -91,35 +48,8 @@ const Profile = () => {
   };
 
   const handleSave = async () => {
-    if (!user) return;
-
     try {
       setLoading(true);
-
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          user_id: user.id,
-          full_name: profileData.full_name,
-          email: profileData.email,
-          phone: profileData.phone,
-          bio: profileData.bio,
-          address: profileData.address,
-          city: profileData.city,
-          state: profileData.state,
-          zip_code: profileData.zip_code,
-          miles_radius: profileData.miles_radius,
-          updated_at: new Date().toISOString(),
-        });
-
-      if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to save profile",
-          variant: "destructive",
-        });
-        return;
-      }
 
       toast({
         title: "Success",
@@ -138,8 +68,7 @@ const Profile = () => {
     }
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
+  const handleSignOut = () => {
     navigate('/');
   };
 

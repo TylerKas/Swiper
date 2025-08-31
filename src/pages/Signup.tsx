@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,8 +9,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 
 const signupSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -23,45 +21,18 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
 
   const { register, handleSubmit, formState: { errors } } = useForm<SignupForm>({
     resolver: zodResolver(signupSchema),
   });
 
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (user) {
-      navigate('/');
-    }
-  }, [user, navigate]);
-
   const handleSignup = async (data: SignupForm) => {
     try {
       setLoading(true);
-      
-      const redirectUrl = `${window.location.origin}/`;
-      
-      const { error } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          emailRedirectTo: redirectUrl
-        }
-      });
-
-      if (error) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
-        return;
-      }
 
       toast({
         title: "Success!",
-        description: "Please check your email to confirm your account.",
+        description: "Account created successfully!",
       });
 
       // Navigate to home page after successful signup
@@ -82,20 +53,11 @@ const Signup = () => {
   const handleGoogleSignUp = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/`
-        }
+      toast({
+        title: 'Success!',
+        description: 'Google sign up successful!'
       });
-
-      if (error) {
-        toast({
-          title: 'Google Sign Up Failed',
-          description: error.message,
-          variant: 'destructive'
-        });
-      }
+      navigate('/');
     } catch (error) {
       toast({
         title: 'Error',

@@ -1,11 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, CheckCircle, Clock, DollarSign, MapPin } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-// TODO: Replace with Firebase Firestore
-// import { db } from '@/firebase/config';
 import { useToast } from "@/hooks/use-toast";
 import MessageInterface from "./MessageInterface";
 import RatingInterface from "./RatingInterface";
@@ -34,52 +31,14 @@ interface ActiveTasksListProps {
 
 const ActiveTasksList = ({ userType }: ActiveTasksListProps) => {
   const [activeTasks, setActiveTasks] = useState<ActiveTask[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [selectedTask, setSelectedTask] = useState<ActiveTask | null>(null);
   const [showMessages, setShowMessages] = useState(false);
   const [showRating, setShowRating] = useState(false);
-  const { user } = useAuth();
   const { toast } = useToast();
-
-  useEffect(() => {
-    if (user) {
-      fetchActiveTasks();
-    }
-  }, [user, userType]);
-
-  const fetchActiveTasks = async () => {
-    if (!user) return;
-
-    try {
-      // TODO: Replace with Firebase Firestore queries
-      // const matchesRef = collection(db, 'matches');
-      // const q = query(matchesRef, 
-      //   where(userType === 'student' ? 'student_id' : 'elder_id', '==', user.uid),
-      //   where('status', 'in', ['accepted', 'in_progress']),
-      //   orderBy('created_at', 'desc')
-      // );
-      // const querySnapshot = await getDocs(q);
-      
-      // For now, show empty state
-      setActiveTasks([]);
-    } catch (error) {
-      console.error('Error fetching active tasks:', error);
-      toast({
-        title: "Error loading tasks",
-        description: "Please try refreshing the page",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleTaskStatusUpdate = async (taskId: string, newStatus: string) => {
     try {
-      // TODO: Replace with Firebase Firestore updateDoc
-      // const taskRef = doc(db, 'matches', taskId);
-      // await updateDoc(taskRef, { status: newStatus });
-
       // Update local state
       setActiveTasks(prev => prev.map(task => 
         task.id === taskId ? { ...task, status: newStatus as any } : task
@@ -122,7 +81,6 @@ const ActiveTasksList = ({ userType }: ActiveTasksListProps) => {
   const handleRatingComplete = () => {
     setShowRating(false);
     setSelectedTask(null);
-    fetchActiveTasks(); // Refresh the list
   };
 
   if (showMessages && selectedTask) {
@@ -152,12 +110,10 @@ const ActiveTasksList = ({ userType }: ActiveTasksListProps) => {
         taskLocation={selectedTask.task.location}
         taskTimeEstimate={selectedTask.task.time_estimate}
         onComplete={async () => {
-          await fetchActiveTasks();
           setShowRating(false);
           setSelectedTask(null);
         }}
         onSkip={async () => {
-          await fetchActiveTasks();
           setShowRating(false);
           setSelectedTask(null);
         }}

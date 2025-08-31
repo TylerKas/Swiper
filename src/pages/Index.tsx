@@ -2,12 +2,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { Users, Heart, HandHeart, User, Plus, Search } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
 import heroImage from "@/assets/hero-image.jpg";
 
 const Index = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const user = null; // No authentication
 
   return (
     <div className="min-h-screen bg-gradient-primary">

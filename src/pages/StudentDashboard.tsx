@@ -5,9 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, X, Heart, MapPin, Clock, DollarSign, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-// TODO: Replace with Firebase Firestore
-// import { db } from '@/firebase/config';
 import ActiveTasksList from "@/components/ActiveTasksList";
 import { EarningsDashboard } from "@/components/EarningsDashboard";
 
@@ -32,20 +29,11 @@ const StudentDashboard = () => {
   const [activeView, setActiveView] = useState<'discover' | 'active'>('discover');
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
 
-  // TODO: Replace with Firebase Firestore query
   useEffect(() => {
     const fetchTasks = async () => {
-      // Removed authentication check - allow access without login for now
-      
       try {
-        // TODO: Replace with Firebase query
-        // const tasksRef = collection(db, 'tasks');
-        // const q = query(tasksRef, where('status', '==', 'open'), limit(20));
-        // const querySnapshot = await getDocs(q);
-        
-        // For now, show mock data
+        // Show mock data
         const mockTasks: Task[] = [
           {
             id: '1',
@@ -91,13 +79,6 @@ const StudentDashboard = () => {
 
   const currentTask = tasks[currentTaskIndex];
 
-  // Optional: Redirect if not authenticated (commented out for now)
-  // useEffect(() => {
-  //   if (!loading && !user) {
-  //     navigate('/login');
-  //   }
-  // }, [user, loading, navigate]);
-
   const handleSwipe = async (direction: 'left' | 'right') => {
     if (direction === 'right') {
       await createMatch();
@@ -118,18 +99,9 @@ const StudentDashboard = () => {
   };
 
   const createMatch = async () => {
-    if (!user || !currentTask) return;
+    if (!currentTask) return;
 
     try {
-      // TODO: Replace with Firebase Firestore addDoc
-      // const matchRef = await addDoc(collection(db, 'matches'), {
-      //   task_id: currentTask.id,
-      //   student_id: user.uid,
-      //   elder_id: currentTask.elder_id,
-      //   status: 'liked',
-      //   created_at: serverTimestamp()
-      // });
-
       toast({
         title: "Match! 💚",
         description: `You've been matched with ${currentTask?.elderName}. They will be notified!`,

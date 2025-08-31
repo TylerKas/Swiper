@@ -1,11 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-// TODO: Replace with Firebase Firestore
-// import { db } from '@/firebase/config';
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
 import { DollarSign, TrendingUp, Clock, Star, CalendarDays, Award } from "lucide-react";
 
 interface CompletedTask {
@@ -36,46 +31,7 @@ export const EarningsDashboard = () => {
     averageRating: 0,
     thisWeekEarnings: 0
   });
-  const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
-  const { toast } = useToast();
-
-  useEffect(() => {
-    const fetchEarningsData = async () => {
-      if (!user) return;
-
-      try {
-        // TODO: Replace with Firebase Firestore queries
-        // const completedTasksRef = collection(db, 'completed_tasks');
-        // const q = query(completedTasksRef, 
-        //   where('student_id', '==', user.uid),
-        //   orderBy('completed_at', 'desc')
-        // );
-        // const querySnapshot = await getDocs(q);
-        
-        // For now, show empty state with zero earnings
-        setCompletedTasks([]);
-        setEarnings({
-          totalEarnings: 0,
-          totalTasks: 0,
-          averageRating: 0,
-          thisWeekEarnings: 0
-        });
-
-      } catch (error) {
-        console.error('Unexpected error fetching earnings:', error);
-        toast({
-          title: "Error loading earnings",
-          description: "Something went wrong. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEarningsData();
-  }, [user, toast]);
+  const [loading, setLoading] = useState(false);
 
   if (loading) {
     return (

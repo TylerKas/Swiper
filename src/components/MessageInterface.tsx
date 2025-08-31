@@ -1,14 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Send, Clock, DollarSign, MapPin } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-// TODO: Replace with Firebase Firestore
-// import { db } from '@/firebase/config';
 import { useToast } from "@/hooks/use-toast";
 
 interface Message {
@@ -44,8 +41,7 @@ const MessageInterface = ({
 }: MessageInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -53,66 +49,10 @@ const MessageInterface = ({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(() => {
-    if (user) {
-      fetchMessages();
-      
-      // TODO: Replace with Firebase real-time listener
-      // const messagesRef = collection(db, 'messages');
-      // const q = query(messagesRef, where('task_id', '==', taskId));
-      // const unsubscribe = onSnapshot(q, (snapshot) => {
-      //   const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      //   setMessages(messages);
-      // });
-      // return unsubscribe;
-    }
-  }, [user, taskId]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const fetchMessages = async () => {
-    try {
-      // TODO: Replace with Firebase Firestore query
-      // const messagesRef = collection(db, 'messages');
-      // const q = query(messagesRef, 
-      //   where('task_id', '==', taskId),
-      //   orderBy('created_at', 'asc')
-      // );
-      // const querySnapshot = await getDocs(q);
-      // const messages = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      // setMessages(messages);
-      
-      // For now, show empty messages
-      setMessages([]);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-      toast({
-        title: "Error loading messages",
-        description: "Please try refreshing the page",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const sendMessage = async () => {
-    if (!newMessage.trim() || !user) return;
+    if (!newMessage.trim()) return;
 
     try {
-      // TODO: Replace with Firebase Firestore addDoc
-      // const messagesRef = collection(db, 'messages');
-      // await addDoc(messagesRef, {
-      //   sender_id: user.uid,
-      //   receiver_id: otherUserId,
-      //   task_id: taskId,
-      //   message: newMessage.trim(),
-      //   created_at: serverTimestamp(),
-      //   read_at: null
-      // });
-
       setNewMessage("");
       toast({
         title: "Message sent",
@@ -133,11 +73,6 @@ const MessageInterface = ({
       e.preventDefault();
       sendMessage();
     }
-  };
-
-  const getUserProfile = async (senderId: string) => {
-    // This would need to be implemented to get sender profile info
-    return null;
   };
 
   return (
@@ -209,7 +144,6 @@ const MessageInterface = ({
                   </div>
                 ) : (
                   messages.map((message) => {
-                    // Get current user's profile ID to determine if message is from them
                     const isFromCurrentUser = message.sender_id !== otherUserId;
                     
                     return (

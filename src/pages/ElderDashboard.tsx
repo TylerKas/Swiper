@@ -8,15 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Plus, Check, MessageSquare, DollarSign } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-// TODO: Replace with Firebase Firestore
-// import { db } from '@/firebase/config';
 import ActiveTasksList from "@/components/ActiveTasksList";
 
 const ElderDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, loading } = useAuth();
   const [activeView, setActiveView] = useState<'post' | 'active'>('post');
   const [formData, setFormData] = useState({
     title: "",
@@ -37,12 +33,6 @@ const ElderDashboard = () => {
     }
   });
 
-  // Optional: Redirect if not authenticated (commented out for now)
-  // React.useEffect(() => {
-  //   if (!loading && !user) {
-  //     navigate('/login');
-  //   }
-  // }, [user, loading, navigate]);
 
   const categories = [
     "Shopping",
@@ -89,20 +79,6 @@ const ElderDashboard = () => {
     }
 
     try {
-      // TODO: Replace with Firebase Firestore addDoc
-      // const taskRef = await addDoc(collection(db, 'tasks'), {
-      //   title: formData.title,
-      //   description: formData.description,
-      //   category: formData.category,
-      //   payment: parseFloat(formData.payment),
-      //   time_estimate: formData.timeEstimate,
-      //   urgency: formData.urgency,
-      //   location: formData.location,
-      //   elder_id: user.uid,
-      //   status: 'open',
-      //   created_at: serverTimestamp()
-      // });
-
       toast({
         title: "Task posted successfully! 🎉",
         description: "Your task has been added to the marketplace. Students will start seeing it soon.",

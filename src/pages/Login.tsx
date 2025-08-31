@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,8 +9,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -23,40 +21,20 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema)
   });
 
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (user) {
-      navigate('/');
-    }
-  }, [user, navigate]);
-
   const handleLogin = async (data: LoginForm) => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password
+      // Mock authentication - always succeed
+      toast({
+        title: 'Welcome back!',
+        description: 'You have successfully logged in.'
       });
-
-      if (error) {
-        toast({
-          title: 'Login Failed',
-          description: error.message,
-          variant: 'destructive'
-        });
-      } else {
-        toast({
-          title: 'Welcome back!',
-          description: 'You have successfully logged in.'
-        });
-        navigate('/');
-      }
+      navigate('/');
     } catch (error) {
       toast({
         title: 'Error',
@@ -71,20 +49,11 @@ const Login = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/`
-        }
+      toast({
+        title: 'Success!',
+        description: 'Google sign in successful.'
       });
-
-      if (error) {
-        toast({
-          title: 'Google Sign In Failed',
-          description: error.message,
-          variant: 'destructive'
-        });
-      }
+      navigate('/');
     } catch (error) {
       toast({
         title: 'Error',
