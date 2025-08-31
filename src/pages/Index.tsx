@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { Users, Heart, HandHeart, User } from "lucide-react";
+import { Users, Heart, HandHeart, User, Plus, Search } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import heroImage from "@/assets/hero-image.jpg";
 
@@ -65,13 +65,22 @@ const Index = () => {
               </p>
             </div>
 
-            <div className="flex justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
-                onClick={() => navigate('/signup')}
+                onClick={() => navigate('/elder')}
                 className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-4"
               >
-                Get Started Today
+                <Plus className="h-5 w-5 mr-2" />
+                Post a Job
+              </Button>
+              <Button
+                size="lg"
+                onClick={() => navigate('/student')}
+                className="bg-white/20 backdrop-blur border-white/20 text-white hover:bg-white/30 text-lg px-8 py-4"
+              >
+                <Search className="h-5 w-5 mr-2" />
+                Find Work
               </Button>
             </div>
           </div>
