@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+// TODO: Replace with Firebase Firestore
+// import { db } from '@/firebase/config';
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { DollarSign, TrendingUp, Clock, Star, CalendarDays, Award } from "lucide-react";
@@ -44,66 +45,21 @@ export const EarningsDashboard = () => {
       if (!user) return;
 
       try {
-        // Get current user's profile ID
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (!profile) return;
-
-        // Fetch completed tasks
-        const { data: completedTasksData, error } = await supabase
-          .from('completed_tasks')
-          .select(`
-            id,
-            task_id,
-            amount_earned,
-            rating_given,
-            completed_at,
-            tasks (
-              title,
-              category,
-              time_estimate
-            )
-          `)
-          .eq('student_id', profile.id)
-          .order('completed_at', { ascending: false });
-
-        if (error) {
-          console.error('Error fetching completed tasks:', error);
-          toast({
-            title: "Error loading earnings",
-            description: "Could not load your earnings data.",
-            variant: "destructive"
-          });
-          return;
-        }
-
-        const tasks = completedTasksData || [];
-        setCompletedTasks(tasks);
-
-        // Calculate earnings statistics
-        const totalEarnings = tasks.reduce((sum, task) => sum + task.amount_earned, 0);
-        const totalTasks = tasks.length;
-        const ratingsGiven = tasks.filter(task => task.rating_given !== null);
-        const averageRating = ratingsGiven.length > 0 
-          ? ratingsGiven.reduce((sum, task) => sum + (task.rating_given || 0), 0) / ratingsGiven.length
-          : 0;
+        // TODO: Replace with Firebase Firestore queries
+        // const completedTasksRef = collection(db, 'completed_tasks');
+        // const q = query(completedTasksRef, 
+        //   where('student_id', '==', user.uid),
+        //   orderBy('completed_at', 'desc')
+        // );
+        // const querySnapshot = await getDocs(q);
         
-        // Calculate this week's earnings
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        const thisWeekEarnings = tasks
-          .filter(task => new Date(task.completed_at) >= oneWeekAgo)
-          .reduce((sum, task) => sum + task.amount_earned, 0);
-
+        // For now, show empty state with zero earnings
+        setCompletedTasks([]);
         setEarnings({
-          totalEarnings,
-          totalTasks,
-          averageRating,
-          thisWeekEarnings
+          totalEarnings: 0,
+          totalTasks: 0,
+          averageRating: 0,
+          thisWeekEarnings: 0
         });
 
       } catch (error) {

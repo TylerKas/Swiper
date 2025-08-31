@@ -6,7 +6,8 @@ import { ArrowLeft, X, Heart, MapPin, Clock, DollarSign, MessageSquare } from "l
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+// TODO: Replace with Firebase Firestore
+// import { db } from '@/firebase/config';
 import ActiveTasksList from "@/components/ActiveTasksList";
 import { EarningsDashboard } from "@/components/EarningsDashboard";
 
@@ -33,57 +34,48 @@ const StudentDashboard = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Fetch real tasks from database
+  // TODO: Replace with Firebase Firestore query
   useEffect(() => {
     const fetchTasks = async () => {
       if (!user) return;
       
       try {
-        const { data: tasksData, error } = await supabase
-          .from('tasks')
-          .select(`
-            id,
-            title,
-            description,
-            location,
-            payment,
-            time_estimate,
-            category,
-            urgency,
-            elder_id,
-            profiles!tasks_elder_id_fkey (
-              full_name
-            )
-          `)
-          .eq('status', 'open')
-          .limit(20);
-
-        if (error) {
-          console.error('Error fetching tasks:', error);
-          toast({
-            title: "Error loading tasks",
-            description: "Could not load available tasks. Please try again.",
-            variant: "destructive"
-          });
-          return;
-        }
-
-        const formattedTasks: Task[] = tasksData?.map(task => ({
-          id: task.id,
-          title: task.title,
-          description: task.description,
-          elderName: task.profiles?.full_name || 'Elder User',
-          elder_id: task.elder_id,
-          location: task.location || 'Location not specified',
-          payment: task.payment,
-          timeEstimate: task.time_estimate || 'Time not specified',
-          category: task.category,
-          urgency: task.urgency || 'Flexible'
-        })) || [];
-
-        setTasks(formattedTasks);
+        // TODO: Replace with Firebase query
+        // const tasksRef = collection(db, 'tasks');
+        // const q = query(tasksRef, where('status', '==', 'open'), limit(20));
+        // const querySnapshot = await getDocs(q);
+        
+        // For now, show mock data
+        const mockTasks: Task[] = [
+          {
+            id: '1',
+            title: 'Help with grocery shopping',
+            description: 'Need assistance with weekly grocery shopping',
+            elderName: 'Margaret Thompson',
+            elder_id: 'elder1',
+            location: 'Downtown',
+            payment: 25,
+            timeEstimate: '2 hours',
+            category: 'Shopping',
+            urgency: 'This week'
+          },
+          {
+            id: '2',
+            title: 'Tech support needed',
+            description: 'Help setting up new smartphone',
+            elderName: 'Robert Williams',
+            elder_id: 'elder2',
+            location: 'Campus Area',
+            payment: 30,
+            timeEstimate: '1 hour',
+            category: 'Technology',
+            urgency: 'Flexible'
+          }
+        ];
+        
+        setTasks(mockTasks);
       } catch (error) {
-        console.error('Unexpected error fetching tasks:', error);
+        console.error('Error loading tasks:', error);
         toast({
           title: "Error loading tasks",
           description: "Something went wrong. Please try again.",
@@ -129,34 +121,14 @@ const StudentDashboard = () => {
     if (!user || !currentTask) return;
 
     try {
-      // Get current user's profile ID
-      const { data: studentProfile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!studentProfile) throw new Error('Student profile not found');
-
-      // Create actual match record
-      const { error } = await supabase
-        .from('matches')
-        .insert({
-          task_id: currentTask.id,
-          student_id: studentProfile.id,
-          elder_id: currentTask.elder_id,
-          status: 'liked'
-        });
-
-      if (error) {
-        console.error('Error creating match:', error);
-        toast({
-          title: "Failed to create match",
-          description: "Please try again",
-          variant: "destructive"
-        });
-        return;
-      }
+      // TODO: Replace with Firebase Firestore addDoc
+      // const matchRef = await addDoc(collection(db, 'matches'), {
+      //   task_id: currentTask.id,
+      //   student_id: user.uid,
+      //   elder_id: currentTask.elder_id,
+      //   status: 'liked',
+      //   created_at: serverTimestamp()
+      // });
 
       toast({
         title: "Match! 💚",

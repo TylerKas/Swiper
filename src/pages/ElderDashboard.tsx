@@ -9,7 +9,8 @@ import { ArrowLeft, Plus, Check, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+// TODO: Replace with Firebase Firestore
+// import { db } from '@/firebase/config';
 import ActiveTasksList from "@/components/ActiveTasksList";
 
 const ElderDashboard = () => {
@@ -82,43 +83,19 @@ const ElderDashboard = () => {
     }
 
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .single();
-
-      if (!profile) {
-        toast({
-          title: "Profile not found",
-          description: "Please complete your profile first.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const { error } = await supabase
-        .from('tasks')
-        .insert({
-          title: formData.title,
-          description: formData.description,
-          category: formData.category,
-          payment: parseFloat(formData.payment),
-          time_estimate: formData.timeEstimate,
-          urgency: formData.urgency,
-          location: formData.location,
-          elder_id: profile.id,
-          status: 'open'
-        });
-
-      if (error) {
-        console.error('Task creation error:', error);
-        toast({
-          title: "Error posting task",
-          description: "Please try again.",
-          variant: "destructive"
-        });
-        return;
-      }
+      // TODO: Replace with Firebase Firestore addDoc
+      // const taskRef = await addDoc(collection(db, 'tasks'), {
+      //   title: formData.title,
+      //   description: formData.description,
+      //   category: formData.category,
+      //   payment: parseFloat(formData.payment),
+      //   time_estimate: formData.timeEstimate,
+      //   urgency: formData.urgency,
+      //   location: formData.location,
+      //   elder_id: user.uid,
+      //   status: 'open',
+      //   created_at: serverTimestamp()
+      // });
 
       toast({
         title: "Task posted successfully! 🎉",

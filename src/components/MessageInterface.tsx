@@ -7,7 +7,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Send, Clock, DollarSign, MapPin } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+// TODO: Replace with Firebase Firestore
+// import { db } from '@/firebase/config';
 import { useToast } from "@/hooks/use-toast";
 
 interface Message {
@@ -56,26 +57,14 @@ const MessageInterface = ({
     if (user) {
       fetchMessages();
       
-      // Set up real-time subscription
-      const channel = supabase
-        .channel('messages-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages',
-            filter: `task_id=eq.${taskId}`
-          },
-          (payload) => {
-            setMessages(prev => [...prev, payload.new as Message]);
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
+      // TODO: Replace with Firebase real-time listener
+      // const messagesRef = collection(db, 'messages');
+      // const q = query(messagesRef, where('task_id', '==', taskId));
+      // const unsubscribe = onSnapshot(q, (snapshot) => {
+      //   const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      //   setMessages(messages);
+      // });
+      // return unsubscribe;
     }
   }, [user, taskId]);
 
@@ -85,14 +74,18 @@ const MessageInterface = ({
 
   const fetchMessages = async () => {
     try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('task_id', taskId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setMessages(data || []);
+      // TODO: Replace with Firebase Firestore query
+      // const messagesRef = collection(db, 'messages');
+      // const q = query(messagesRef, 
+      //   where('task_id', '==', taskId),
+      //   orderBy('created_at', 'asc')
+      // );
+      // const querySnapshot = await getDocs(q);
+      // const messages = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // setMessages(messages);
+      
+      // For now, show empty messages
+      setMessages([]);
     } catch (error) {
       console.error('Error fetching messages:', error);
       toast({
@@ -109,25 +102,16 @@ const MessageInterface = ({
     if (!newMessage.trim() || !user) return;
 
     try {
-      // Get current user's profile ID
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!profile) throw new Error('Profile not found');
-
-      const { error } = await supabase
-        .from('messages')
-        .insert({
-          sender_id: profile.id,
-          receiver_id: otherUserId,
-          task_id: taskId,
-          message: newMessage.trim()
-        });
-
-      if (error) throw error;
+      // TODO: Replace with Firebase Firestore addDoc
+      // const messagesRef = collection(db, 'messages');
+      // await addDoc(messagesRef, {
+      //   sender_id: user.uid,
+      //   receiver_id: otherUserId,
+      //   task_id: taskId,
+      //   message: newMessage.trim(),
+      //   created_at: serverTimestamp(),
+      //   read_at: null
+      // });
 
       setNewMessage("");
       toast({

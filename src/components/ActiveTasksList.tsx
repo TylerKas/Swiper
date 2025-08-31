@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, CheckCircle, Clock, DollarSign, MapPin } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+// TODO: Replace with Firebase Firestore
+// import { db } from '@/firebase/config';
 import { useToast } from "@/hooks/use-toast";
 import MessageInterface from "./MessageInterface";
 import RatingInterface from "./RatingInterface";
@@ -50,56 +51,17 @@ const ActiveTasksList = ({ userType }: ActiveTasksListProps) => {
     if (!user) return;
 
     try {
-      // Get current user's profile ID
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!profile) throw new Error('Profile not found');
-
-      // Fetch matches with task and other user details
-      const { data, error } = await supabase
-        .from('matches')
-        .select(`
-          id,
-          task_id,
-          status,
-          tasks!inner (
-            id,
-            title,
-            payment,
-            location,
-            time_estimate
-          ),
-          student_profile:profiles!matches_student_id_fkey (
-            id,
-            full_name,
-            user_type
-          ),
-          elder_profile:profiles!matches_elder_id_fkey (
-            id,
-            full_name,
-            user_type
-          )
-        `)
-        .eq(userType === 'student' ? 'student_id' : 'elder_id', profile.id)
-        .in('status', ['accepted', 'in_progress'])
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Transform data to include other_user info
-      const transformedTasks: ActiveTask[] = (data || []).map((match: any) => ({
-        id: match.id,
-        task_id: match.task_id,
-        status: match.status,
-        task: match.tasks,
-        other_user: userType === 'student' ? match.elder_profile : match.student_profile
-      }));
-
-      setActiveTasks(transformedTasks);
+      // TODO: Replace with Firebase Firestore queries
+      // const matchesRef = collection(db, 'matches');
+      // const q = query(matchesRef, 
+      //   where(userType === 'student' ? 'student_id' : 'elder_id', '==', user.uid),
+      //   where('status', 'in', ['accepted', 'in_progress']),
+      //   orderBy('created_at', 'desc')
+      // );
+      // const querySnapshot = await getDocs(q);
+      
+      // For now, show empty state
+      setActiveTasks([]);
     } catch (error) {
       console.error('Error fetching active tasks:', error);
       toast({
@@ -114,12 +76,9 @@ const ActiveTasksList = ({ userType }: ActiveTasksListProps) => {
 
   const handleTaskStatusUpdate = async (taskId: string, newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from('matches')
-        .update({ status: newStatus })
-        .eq('id', taskId);
-
-      if (error) throw error;
+      // TODO: Replace with Firebase Firestore updateDoc
+      // const taskRef = doc(db, 'matches', taskId);
+      // await updateDoc(taskRef, { status: newStatus });
 
       // Update local state
       setActiveTasks(prev => prev.map(task => 

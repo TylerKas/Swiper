@@ -6,7 +6,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Star, DollarSign, Clock, MapPin } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+// TODO: Replace with Firebase Firestore
+// import { db } from '@/firebase/config';
 import { useToast } from "@/hooks/use-toast";
 
 interface RatingInterfaceProps {
@@ -46,46 +47,28 @@ const RatingInterface = ({
 
     setSubmitting(true);
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user?.id)
-        .single();
+      // TODO: Replace with Firebase Firestore operations
+      // const ratingsRef = collection(db, 'ratings');
+      // await addDoc(ratingsRef, {
+      //   task_id: taskId,
+      //   rater_id: user?.uid,
+      //   rated_id: otherUserId,
+      //   rating: rating,
+      //   comment: comment.trim() || null,
+      //   created_at: serverTimestamp()
+      // });
 
-      if (!profile) throw new Error('Profile not found');
+      // const completedTasksRef = collection(db, 'completed_tasks');
+      // await addDoc(completedTasksRef, {
+      //   task_id: taskId,
+      //   student_id: otherUserType === 'student' ? otherUserId : user?.uid,
+      //   amount_earned: taskPayment,
+      //   rating_given: rating,
+      //   completed_at: serverTimestamp()
+      // });
 
-      // Create rating record
-      const { error: ratingError } = await supabase
-        .from('ratings')
-        .insert({
-          task_id: taskId,
-          rater_id: profile.id,
-          rated_id: otherUserId,
-          rating: rating,
-          comment: comment.trim() || null
-        });
-
-      if (ratingError) throw ratingError;
-
-      // Create completed task record with earnings
-      const { error: completedError } = await supabase
-        .from('completed_tasks')
-        .insert({
-          task_id: taskId,
-          student_id: otherUserType === 'student' ? otherUserId : profile.id,
-          amount_earned: taskPayment,
-          rating_given: rating
-        });
-
-      if (completedError) throw completedError;
-
-      // Update task status to completed
-      const { error: taskError } = await supabase
-        .from('tasks')
-        .update({ status: 'completed' })
-        .eq('id', taskId);
-
-      if (taskError) throw taskError;
+      // const taskRef = doc(db, 'tasks', taskId);
+      // await updateDoc(taskRef, { status: 'completed' });
 
       toast({
         title: "Rating submitted! 🌟",

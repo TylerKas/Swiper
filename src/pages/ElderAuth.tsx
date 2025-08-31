@@ -8,7 +8,8 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { supabase } from '@/integrations/supabase/client';
+// TODO: Replace with Firebase auth
+// import { auth } from '@/firebase/config';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -57,31 +58,11 @@ const ElderAuth = () => {
   const handleSignup = async (data: SignupForm) => {
     setLoading(true);
     try {
-      const redirectUrl = `${window.location.origin}/elder`;
-      
-      const { error: signUpError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            full_name: data.fullName
-          }
-        }
-      });
-
-      if (signUpError) {
-        toast({
-          title: 'Signup Error',
-          description: signUpError.message,
-          variant: 'destructive'
-        });
-        return;
-      }
-
+      // TODO: Replace with Firebase createUserWithEmailAndPassword
       toast({
-        title: 'Account Created!',
-        description: 'Please check your email to verify your account.'
+        title: 'Feature Coming Soon',
+        description: 'Elder signup will be available once Firebase is integrated.',
+        variant: 'destructive'
       });
     } catch (error) {
       toast({
@@ -97,21 +78,12 @@ const ElderAuth = () => {
   const handleLogin = async (data: LoginForm) => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password
+      // TODO: Replace with Firebase signInWithEmailAndPassword
+      toast({
+        title: 'Feature Coming Soon',
+        description: 'Elder login will be available once Firebase is integrated.',
+        variant: 'destructive'
       });
-
-      if (error) {
-        toast({
-          title: 'Login Error',
-          description: error.message,
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      navigate('/elder');
     } catch (error) {
       toast({
         title: 'Error',
