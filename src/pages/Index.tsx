@@ -65,23 +65,29 @@ const Index = () => {
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button
-                size="lg"
-                onClick={() => navigate('/elder')}
-                className="bg-white text-primary hover:bg-white/90 text-lg px-8 py-4"
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Post a Job
-              </Button>
-              <Button
-                size="lg"
-                onClick={() => navigate('/student')}
-                className="bg-white/20 backdrop-blur border-white/20 text-white hover:bg-white/30 text-lg px-8 py-4"
-              >
-                <Search className="h-5 w-5 mr-2" />
-                Find Work
-              </Button>
+            <div className="flex flex-col sm:flex-row gap-6 justify-center">
+              <div className="text-center">
+                <Button
+                  size="lg"
+                  onClick={() => navigate('/elder')}
+                  className="w-full sm:w-48 h-16 bg-white text-primary hover:bg-white/90 text-xl font-semibold shadow-warm rounded-xl"
+                >
+                  <Plus className="h-6 w-6 mr-3" />
+                  Post a Job
+                </Button>
+                <p className="text-white/80 text-sm mt-2">Need help with a task?</p>
+              </div>
+              <div className="text-center">
+                <Button
+                  size="lg"
+                  onClick={() => navigate('/student')}
+                  className="w-full sm:w-48 h-16 bg-white/20 backdrop-blur border-2 border-white/30 text-white hover:bg-white/30 text-xl font-semibold shadow-warm rounded-xl"
+                >
+                  <Search className="h-6 w-6 mr-3" />
+                  Find Work
+                </Button>
+                <p className="text-white/80 text-sm mt-2">Looking to earn money?</p>
+              </div>
             </div>
           </div>
 
