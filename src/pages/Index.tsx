@@ -1,11 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { Users, Heart, HandHeart } from "lucide-react";
+import { Users, Heart, HandHeart, User } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import heroImage from "@/assets/hero-image.jpg";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-gradient-primary">
@@ -15,6 +17,35 @@ const Index = () => {
           <div className="flex items-center space-x-2">
             <Heart className="h-8 w-8 text-white" />
             <h1 className="text-2xl font-bold text-white">HelpMate</h1>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            {user ? (
+              <Button
+                variant="secondary"
+                onClick={() => navigate('/profile')}
+                className="bg-white/20 backdrop-blur border-white/20 text-white hover:bg-white/30"
+              >
+                <User className="h-4 w-4 mr-2" />
+                Profile
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  onClick={() => navigate('/student-auth')}
+                  className="text-white hover:bg-white/20"
+                >
+                  Sign In
+                </Button>
+                <Button
+                  onClick={() => navigate('/elder-auth')}
+                  className="bg-white text-primary hover:bg-white/90"
+                >
+                  Get Started
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </header>

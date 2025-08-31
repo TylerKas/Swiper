@@ -9,6 +9,7 @@ import StudentDashboard from "./pages/StudentDashboard";
 import ElderDashboard from "./pages/ElderDashboard";
 import StudentAuth from "./pages/StudentAuth";
 import ElderAuth from "./pages/ElderAuth";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/elder-auth" element={<ElderAuth />} />
             <Route path="/student" element={<StudentDashboard />} />
             <Route path="/elder" element={<ElderDashboard />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
