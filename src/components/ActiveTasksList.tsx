@@ -21,12 +21,12 @@ interface ActiveTask {
   other_user: {
     id: string;
     full_name: string;
-    user_type: 'student' | 'elder';
+    user_type: 'worker' | 'client';
   };
 }
 
 interface ActiveTasksListProps {
-  userType: 'student' | 'elder';
+  userType: 'worker' | 'client';
 }
 
 const ActiveTasksList = ({ userType }: ActiveTasksListProps) => {
@@ -142,9 +142,9 @@ const ActiveTasksList = ({ userType }: ActiveTasksListProps) => {
         <CardContent>
           <p className="text-muted-foreground">No active tasks yet</p>
           <p className="text-sm text-muted-foreground mt-2">
-            {userType === 'student' 
+            {userType === 'worker' 
               ? "Start swiping on tasks to find your first match!" 
-              : "Post a task to get started!"}
+              : "Post a job to get started!"}
           </p>
         </CardContent>
       </Card>

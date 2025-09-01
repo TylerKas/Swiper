@@ -79,7 +79,7 @@ const Index = () => {
                 <span className="block text-accent"> Generations</span>
               </h2>
               <p className="text-xl text-white/90 max-w-lg">
-                Match elderly people who need help with college students looking for easy income. 
+                Connect people who need help with workers looking for opportunities. 
                 Building communities, one task at a time.
               </p>
             </div>
@@ -88,7 +88,7 @@ const Index = () => {
               <div className="text-center">
                 <Button
                   size="lg"
-                  onClick={() => navigate('/elder')}
+                  onClick={() => navigate('/find-work')}
                   className="w-full sm:w-48 h-16 bg-white text-primary hover:bg-white/90 text-xl font-semibold shadow-warm rounded-xl"
                 >
                   <Search className="h-6 w-6 mr-3" />
@@ -99,7 +99,7 @@ const Index = () => {
               <div className="text-center">
                 <Button
                   size="lg"
-                  onClick={() => navigate('/student')}
+                  onClick={() => navigate('/post-job')}
                   className="w-full sm:w-48 h-16 bg-white/20 backdrop-blur border-2 border-white/30 text-white hover:bg-white/30 text-xl font-semibold shadow-warm rounded-xl"
                 >
                   <Plus className="h-6 w-6 mr-3" />
@@ -114,7 +114,7 @@ const Index = () => {
             <div className="rounded-2xl overflow-hidden shadow-warm">
               <img 
                 src={heroImage} 
-                alt="Grandmother and college student working together in a cozy setting"
+                alt="People working together in a cozy setting"
                 className="w-full h-auto object-cover"
               />
             </div>

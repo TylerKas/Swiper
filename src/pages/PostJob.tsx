@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import ActiveTasksList from "@/components/ActiveTasksList";
 
-const ElderDashboard = () => {
+const PostJob = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [activeView, setActiveView] = useState<'post' | 'active'>('post');
@@ -32,7 +32,6 @@ const ElderDashboard = () => {
       previousCleaning: false
     }
   });
-
 
   const categories = [
     "Shopping",
@@ -80,8 +79,8 @@ const ElderDashboard = () => {
 
     try {
       toast({
-        title: "Task posted successfully! 🎉",
-        description: "Your task has been added to the marketplace. Students will start seeing it soon.",
+        title: "Job posted successfully! 🎉",
+        description: "Your job has been added to the marketplace. Workers will start seeing it soon.",
       });
 
       // Reset form
@@ -106,7 +105,7 @@ const ElderDashboard = () => {
     } catch (error) {
       console.error('Unexpected error:', error);
       toast({
-        title: "Error posting task",
+        title: "Error posting job",
         description: "Please try again.",
         variant: "destructive"
       });
@@ -149,8 +148,8 @@ const ElderDashboard = () => {
               <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Plus className="h-8 w-8 text-white" />
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Post a Task</h1>
-              <p className="text-gray-600">Tell us what help you need and we'll connect you with a student</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Post a Job</h1>
+              <p className="text-gray-600">Tell us what help you need and we'll connect you with a worker</p>
             </div>
             <div className="w-10"></div>
           </div>
@@ -168,7 +167,7 @@ const ElderDashboard = () => {
                   <h2 className="text-2xl font-bold text-gray-900">What do you need help with?</h2>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="title" className="text-lg font-medium text-gray-900">Task Title</Label>
+                    <Label htmlFor="title" className="text-lg font-medium text-gray-900">Job Title</Label>
                     <Input
                       id="title"
                       placeholder="e.g., Help with grocery shopping"
@@ -292,7 +291,7 @@ const ElderDashboard = () => {
                 {/* Special Requirements */}
                 <div className="space-y-6">
                   <h2 className="text-2xl font-bold text-gray-900">Special Requirements (Optional)</h2>
-                  <p className="text-gray-600">Select any special requirements for this task:</p>
+                  <p className="text-gray-600">Select any special requirements for this job:</p>
                   
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="space-y-4">
@@ -363,18 +362,18 @@ const ElderDashboard = () => {
                     size="lg"
                     className="w-full h-14 bg-orange-500 hover:bg-orange-600 text-white text-lg font-semibold rounded-xl"
                   >
-                    Post Task
+                    Post Job
                   </Button>
                 </div>
               </form>
             </div>
           </div>
         ) : (
-          <ActiveTasksList userType="elder" />
+          <ActiveTasksList userType="client" />
         )}
       </main>
     </div>
   );
 };
 
-export default ElderDashboard;
+export default PostJob;
