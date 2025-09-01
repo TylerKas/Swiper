@@ -15,6 +15,7 @@ interface ProfileData {
   email?: string;
   phone?: string;
   bio?: string;
+  age?: string;
   address?: string;
   city?: string;
   state?: string;
@@ -26,14 +27,15 @@ interface ProfileData {
 const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const [loading, setLoading] = useState(false);
   const addressInputRef = useRef<HTMLInputElement | null>(null);
   const [profileData, setProfileData] = useState<ProfileData>({
     full_name: '',
-    email: '',
+    email: user?.email || '',
     phone: '',
     bio: '',
+    age: '',
     address: '',
     city: '',
     state: '',
@@ -42,6 +44,13 @@ const Profile = () => {
     avatar_url: '',
   });
   const [addressDraft, setAddressDraft] = useState(profileData.address || "");
+
+  // Update email when user data is available
+  useEffect(() => {
+    if (user?.email) {
+      setProfileData(prev => ({ ...prev, email: user.email }));
+    }
+  }, [user?.email]);
 
   const handleInputChange = (field: string, value: string) => {
     setProfileData(prev => ({ ...prev, [field]: value }));
@@ -89,6 +98,17 @@ const Profile = () => {
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Check file size (2MB limit)
+      const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+      if (file.size > maxSize) {
+        toast({
+          title: "File Too Large",
+          description: "Please select an image smaller than 2MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       // For now, just show a toast. File upload can be implemented later with storage
       toast({
         title: "Photo Upload",
@@ -146,7 +166,8 @@ const Profile = () => {
                   value={profileData.full_name?.split(' ')[0] || ''}
                   onChange={(e) => {
                     const lastName = profileData.full_name?.split(' ').slice(1).join(' ') || '';
-                    handleInputChange('full_name', `${e.target.value} ${lastName}`.trim());
+                    const firstName = e.target.value.slice(0, 10); // 10 character limit
+                    handleInputChange('full_name', `${firstName} ${lastName}`.trim());
                   }}
                   placeholder="John"
                   className="mt-1"
@@ -159,7 +180,8 @@ const Profile = () => {
                   value={profileData.full_name?.split(' ').slice(1).join(' ') || ''}
                   onChange={(e) => {
                     const firstName = profileData.full_name?.split(' ')[0] || '';
-                    handleInputChange('full_name', `${firstName} ${e.target.value}`.trim());
+                    const lastName = e.target.value.slice(0, 15); // 15 character limit
+                    handleInputChange('full_name', `${firstName} ${lastName}`.trim());
                   }}
                   placeholder="Doe"
                   className="mt-1"
@@ -175,23 +197,25 @@ const Profile = () => {
                   id="email"
                   type="email"
                   value={profileData.email || ''}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
-                  placeholder="john@gmail.com"
-                  className="pl-10"
+                  disabled
+                  className="pl-10 bg-gray-50"
                 />
               </div>
             </div>
 
             <div className="mb-6">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="age">Age</Label>
               <Input
-                id="password"
-                type="password"
-                placeholder="Choose a password"
+                id="age"
+                type="number"
+                value={profileData.age || ''}
+                onChange={(e) => {
+                  const age = e.target.value.slice(0, 3); // 3 character limit
+                  handleInputChange('age', age);
+                }}
+                placeholder="25"
                 className="mt-1"
-                disabled
               />
-              <p className="text-sm text-gray-500 mt-1">Password cannot be changed here</p>
             </div>
 
             <div className="mb-6">
@@ -201,7 +225,10 @@ const Profile = () => {
                 <Input
                   id="phone"
                   value={profileData.phone || ''}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  onChange={(e) => {
+                    const phone = e.target.value.slice(0, 15); // 15 character limit
+                    handleInputChange('phone', phone);
+                  }}
                   placeholder="(555) 123-4567"
                   className="pl-10"
                 />
@@ -213,7 +240,10 @@ const Profile = () => {
               <Textarea
                 id="bio"
                 value={profileData.bio || ''}
-                onChange={(e) => handleInputChange('bio', e.target.value)}
+                onChange={(e) => {
+                  const bio = e.target.value.slice(0, 500); // 500 character limit
+                  handleInputChange('bio', bio);
+                }}
                 placeholder="Tell us about yourself..."
                 className="mt-1 min-h-[80px]"
               />
@@ -230,7 +260,7 @@ const Profile = () => {
                     className="hidden"
                   />
                   <Upload className="h-4 w-4 mr-2 text-gray-400" />
-                  <span className="text-gray-600">Upload Photo</span>
+                  <span className="text-gray-600">Upload Photo (Max 2MB)</span>
                 </label>
               </div>
             </div>
