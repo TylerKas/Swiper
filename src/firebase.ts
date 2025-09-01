@@ -24,6 +24,7 @@ import {
   query,
   orderBy
 } from "firebase/firestore";
+
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -54,6 +55,20 @@ export async function signInWithGoogle() {
   await setPersistence(auth, browserLocalPersistence);
   const result = await signInWithPopup(auth, provider);
   return result.user;
+}
+
+//Register with regular email
+export async function registerWithEmail(email: string, password: string) {
+  await setPersistence(auth, browserLocalPersistence);
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  return cred.user;
+}
+
+//Login with regular email
+export async function signInWithEmail(email: string, password: string) {
+  await setPersistence(auth, browserLocalPersistence);
+  const cred = await signInWithEmailAndPassword(auth, email, password);
+  return cred.user;
 }
 
 // Sign out user

@@ -10,8 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithGoogle } from "@/firebase"; 
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/firebase";
+import { signInWithEmail } from '@/firebase';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -32,7 +31,7 @@ const Login = () => {
   const handleLogin = async (data: LoginForm) => {
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, data.email, data.password);
+      await signInWithEmail(data.email, data.password);
       toast({
         title: 'Welcome back!',
         description: 'You have successfully logged in.'
@@ -101,6 +100,8 @@ const Login = () => {
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
+                    type="email"
+                    autoComplete = "email"
                     placeholder="Enter your email"
                     className="pl-10"
                     {...form.register('email')}
@@ -116,6 +117,7 @@ const Login = () => {
                 <Input
                   id="password"
                   type="password"
+                  autoComplete = "current-password"
                   placeholder="Enter your password"
                   {...form.register('password')}
                 />

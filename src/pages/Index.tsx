@@ -91,8 +91,8 @@ const Index = () => {
                   onClick={() => navigate('/elder')}
                   className="w-full sm:w-48 h-16 bg-white text-primary hover:bg-white/90 text-xl font-semibold shadow-warm rounded-xl"
                 >
-                  <Plus className="h-6 w-6 mr-3" />
-                  Post a Job
+                  <Search className="h-6 w-6 mr-3" />
+                  Find Work
                 </Button>
                 <p className="text-white/80 text-sm mt-2">Need help with a task?</p>
               </div>
@@ -102,8 +102,8 @@ const Index = () => {
                   onClick={() => navigate('/student')}
                   className="w-full sm:w-48 h-16 bg-white/20 backdrop-blur border-2 border-white/30 text-white hover:bg-white/30 text-xl font-semibold shadow-warm rounded-xl"
                 >
-                  <Search className="h-6 w-6 mr-3" />
-                  Find Work
+                  <Plus className="h-6 w-6 mr-3" />
+                  Post a Job
                 </Button>
                 <p className="text-white/80 text-sm mt-2">Looking to earn money?</p>
               </div>
