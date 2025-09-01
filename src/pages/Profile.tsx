@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, User, MapPin, Mail, Phone, Upload, Heart } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ProfileData {
   full_name?: string;
@@ -25,6 +26,7 @@ interface ProfileData {
 const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signOut } = useAuth();
   const [loading, setLoading] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData>({
     full_name: '',
@@ -68,8 +70,18 @@ const Profile = () => {
     }
   };
 
-  const handleSignOut = () => {
-    navigate('/');
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {

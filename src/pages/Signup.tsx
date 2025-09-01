@@ -10,6 +10,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithGoogle } from "@/firebase"; 
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/firebase";
 
 
 const signupSchema = z.object({
@@ -31,20 +33,20 @@ const Signup = () => {
   const handleSignup = async (data: SignupForm) => {
     try {
       setLoading(true);
-
+      await createUserWithEmailAndPassword(auth, data.email, data.password);
+      
       toast({
         title: "Success!",
         description: "Account created successfully!",
       });
 
-      // Navigate to home page after successful signup
-      navigate("/");
+      navigate('/');
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Signup error:", error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -55,7 +57,7 @@ const Signup = () => {
   const handleGoogleSignUp = async () => {
     setLoading(true);
     try {
-      await signInWithGoogle();      // <-- same call
+      await signInWithGoogle();
       toast({
         title: 'Success!',
         description: 'Google sign up successful!'

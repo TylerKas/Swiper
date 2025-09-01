@@ -1,12 +1,22 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { Users, Heart, HandHeart, User, Plus, Search } from "lucide-react";
+import { Users, Heart, HandHeart, User, Plus, Search, LogOut } from "lucide-react";
 import heroImage from "@/assets/hero-image.jpg";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
   const navigate = useNavigate();
-  const user = null; // No authentication
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      // The AuthContext will automatically update the user state
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-primary">
@@ -20,14 +30,24 @@ const Index = () => {
           
           <div className="flex items-center space-x-4">
             {user ? (
-              <Button 
-                onClick={() => navigate('/profile')}
-                variant="ghost"
-                size="icon"
-                className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/30"
-              >
-                <User className="h-5 w-5" />
-              </Button>
+              <>
+                <Button 
+                  onClick={() => navigate('/profile')}
+                  variant="ghost"
+                  size="icon"
+                  className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white border border-white/30"
+                >
+                  <User className="h-5 w-5" />
+                </Button>
+                <Button
+                  onClick={handleSignOut}
+                  variant="ghost"
+                  className="text-white hover:bg-white/20"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </Button>
+              </>
             ) : (
               <>
                 <Button
