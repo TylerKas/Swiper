@@ -10,8 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithGoogle } from "@/firebase"; 
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/firebase";
+import { registerWithEmail } from "@/firebase";
 
 
 const signupSchema = z.object({
@@ -33,7 +32,7 @@ const Signup = () => {
   const handleSignup = async (data: SignupForm) => {
     try {
       setLoading(true);
-      await createUserWithEmailAndPassword(auth, data.email, data.password);
+      await registerWithEmail (data.email, data.password);
       
       toast({
         title: "Success!",
