@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -9,6 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, User, MapPin, Mail, Phone, Upload, Heart } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface ProfileData {
   full_name?: string;
@@ -28,6 +28,7 @@ const Profile = () => {
   const { toast } = useToast();
   const { signOut } = useAuth();
   const [loading, setLoading] = useState(false);
+  const addressInputRef = useRef<HTMLInputElement | null>(null);
   const [profileData, setProfileData] = useState<ProfileData>({
     full_name: '',
     email: '',
@@ -40,6 +41,7 @@ const Profile = () => {
     miles_radius: 10,
     avatar_url: '',
   });
+  const [addressDraft, setAddressDraft] = useState(profileData.address || "");
 
   const handleInputChange = (field: string, value: string) => {
     setProfileData(prev => ({ ...prev, [field]: value }));
@@ -240,51 +242,45 @@ const Profile = () => {
               <MapPin className="h-5 w-5 mr-2" />
               Location
             </h3>
-            
+
             <div className="mb-6">
               <Label htmlFor="address">Address</Label>
               <Input
                 id="address"
-                value={profileData.address || ''}
-                onChange={(e) => handleInputChange('address', e.target.value)}
-                placeholder="123 Main Street"
+                ref={(el) => {
+                  if (!el) return;
+                  (addressInputRef as any).current = el;
+              
+                  if ((addressInputRef as any)._acAttached) return;
+                  (addressInputRef as any)._acAttached = true;
+              
+                  const ac = new google.maps.places.Autocomplete(el, {
+                    types: ["geocode"], // addresses only
+                    // componentRestrictions: { country: "us" },
+                  });
+              
+                  ac.addListener("place_changed", () => {
+                    const place = ac.getPlace();
+                    const formatted = place?.formatted_address || "";
+                    // set both the draft (what shows in the box) and the persisted profile value
+                    setAddressDraft(formatted);
+                    handleInputChange("address", formatted);
+                  });
+                }}
+                value={addressDraft}
+                onChange={(e) => setAddressDraft(e.target.value)}  // typing shows live
+                placeholder="Start typing address…"
                 className="mt-1"
-              />
+                onBlur={() => {
+                  // if they typed but didn't select a valid suggestion, clear the box
+                  if (addressDraft !== (profileData.address || "")) {
+                    setAddressDraft("");
+                  }
+                }}
+              />              
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div>
-                <Label htmlFor="city">City</Label>
-                <Input
-                  id="city"
-                  value={profileData.city || ''}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  placeholder="Los Angeles"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="state">State</Label>
-                <Input
-                  id="state"
-                  value={profileData.state || ''}
-                  onChange={(e) => handleInputChange('state', e.target.value)}
-                  placeholder="CA"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="zipCode">ZIP Code</Label>
-                <Input
-                  id="zipCode"
-                  value={profileData.zip_code || ''}
-                  onChange={(e) => handleInputChange('zip_code', e.target.value)}
-                  placeholder="90210"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
+            {/* Removed City/State/ZIP inputs as requested */}
             <div className="mb-8">
               <Label>Miles Away Radius: {profileData.miles_radius} miles</Label>
               <Slider
@@ -297,6 +293,7 @@ const Profile = () => {
               />
             </div>
           </div>
+
 
           <div className="flex gap-4">
             <Button 
