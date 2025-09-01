@@ -4,10 +4,121 @@ import { useNavigate } from "react-router-dom";
 import { Users, Heart, HandHeart, User, Plus, Search, LogOut } from "lucide-react";
 import heroImage from "@/assets/hero-image.jpg";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
+
+interface ProfileData {
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  bio?: string;
+  age?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  miles_radius?: number;
+  avatar_url?: string;
+}
 
 const Index = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { toast } = useToast();
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Check if profile is complete
+  const isProfileComplete = () => {
+    if (!profileData) return false;
+    
+    // Check mandatory fields
+    const mandatoryFields = [
+      profileData.full_name,
+      profileData.phone,
+      profileData.age,
+      profileData.address
+    ];
+    
+    return mandatoryFields.every(field => field && field.trim() !== '');
+  };
+
+  // Load profile data (this would typically come from your backend)
+  useEffect(() => {
+    if (user) {
+      // For now, we'll simulate loading profile data
+      // In a real app, you'd fetch this from your database
+      setLoading(true);
+      
+      // Simulate API call
+      setTimeout(() => {
+        // Mock profile data - in reality this would come from your backend
+        const mockProfileData: ProfileData = {
+          full_name: '',
+          email: user.email,
+          phone: '',
+          bio: '',
+          age: '',
+          address: '',
+          city: '',
+          state: '',
+          zip_code: '',
+          miles_radius: 10,
+          avatar_url: '',
+        };
+        setProfileData(mockProfileData);
+        setLoading(false);
+      }, 500);
+    } else {
+      setProfileData(null);
+    }
+  }, [user]);
+
+  const handleFindWorkClick = () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to access Find Work",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isProfileComplete()) {
+      toast({
+        title: "Profile Incomplete",
+        description: "Please complete your profile before finding work",
+        variant: "destructive",
+      });
+      navigate('/profile');
+      return;
+    }
+
+    navigate('/find-work');
+  };
+
+  const handlePostJobClick = () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to post a job",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isProfileComplete()) {
+      toast({
+        title: "Profile Incomplete",
+        description: "Please complete your profile before posting a job",
+        variant: "destructive",
+      });
+      navigate('/profile');
+      return;
+    }
+
+    navigate('/post-job');
+  };
 
   const handleSignOut = async () => {
     try {
@@ -88,8 +199,9 @@ const Index = () => {
               <div className="text-center">
                 <Button
                   size="lg"
-                  onClick={() => navigate('/find-work')}
-                  className="w-full sm:w-48 h-16 bg-white text-primary hover:bg-white/90 text-xl font-semibold shadow-warm rounded-xl"
+                  onClick={handleFindWorkClick}
+                  disabled={loading}
+                  className="w-full sm:w-48 h-16 bg-white text-primary hover:bg-white/90 text-xl font-semibold shadow-warm rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Search className="h-6 w-6 mr-3" />
                   Find Work
@@ -99,8 +211,9 @@ const Index = () => {
               <div className="text-center">
                 <Button
                   size="lg"
-                  onClick={() => navigate('/post-job')}
-                  className="w-full sm:w-48 h-16 bg-white/20 backdrop-blur border-2 border-white/30 text-white hover:bg-white/30 text-xl font-semibold shadow-warm rounded-xl"
+                  onClick={handlePostJobClick}
+                  disabled={loading}
+                  className="w-full sm:w-48 h-16 bg-white/20 backdrop-blur border-2 border-white/30 text-white hover:bg-white/30 text-xl font-semibold shadow-warm rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Plus className="h-6 w-6 mr-3" />
                   Post a Job
