@@ -11,7 +11,7 @@ interface RatingInterfaceProps {
   taskId: string;
   otherUserId: string;
   otherUserName: string;
-  otherUserType: 'student' | 'elder';
+  otherUserType: 'worker' | 'client';
   taskTitle: string;
   taskPayment: number;
   taskLocation: string;

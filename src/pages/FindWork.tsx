@@ -12,9 +12,9 @@ interface Task {
   id: string;
   title: string;
   description: string;
-  elderName: string;
-  elderAge?: number;
-  elder_id: string;
+  clientName: string;
+  clientAge?: number;
+  client_id: string;
   location: string;
   payment: number;
   timeEstimate: string;
@@ -22,7 +22,7 @@ interface Task {
   urgency: string;
 }
 
-const StudentDashboard = () => {
+const FindWork = () => {
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,26 +37,26 @@ const StudentDashboard = () => {
         const mockTasks: Task[] = [
           {
             id: '1',
-            title: 'IPAD KID',
-            description: 'Help test',
-            elderName: 'JACK KENNEDY',
-            elder_id: 'elder1',
+            title: 'Tech Support Needed',
+            description: 'Help setting up new smartphone and tablet',
+            clientName: 'Margaret Thompson',
+            client_id: 'client1',
             location: 'Los Angeles',
             payment: 99.98,
             timeEstimate: '1 hour',
-            category: 'Tech Help',
+            category: 'Technology',
             urgency: 'This week'
           },
           {
             id: '2',
-            title: 'Tech support needed',
-            description: 'Help setting up new smartphone',
-            elderName: 'Robert Williams',
-            elder_id: 'elder2',
+            title: 'Grocery Shopping',
+            description: 'Need help with grocery shopping and carrying bags',
+            clientName: 'Robert Williams',
+            client_id: 'client2',
             location: 'Campus Area',
             payment: 30,
             timeEstimate: '1 hour',
-            category: 'Technology',
+            category: 'Shopping',
             urgency: 'Flexible'
           }
         ];
@@ -104,7 +104,7 @@ const StudentDashboard = () => {
     try {
       toast({
         title: "Match! 💚",
-        description: `You've been matched with ${currentTask?.elderName}. They will be notified!`,
+        description: `You've been matched with ${currentTask?.clientName}. They will be notified!`,
       });
     } catch (error) {
       console.error('Error creating match:', error);
@@ -154,7 +154,7 @@ const StudentDashboard = () => {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <h1 className="text-xl font-semibold text-gray-900">
-              Find Tasks
+              Find Work
             </h1>
             <div className="w-10"></div>
           </div>
@@ -178,7 +178,7 @@ const StudentDashboard = () => {
                 </div>
                 
                 <h2 className="text-3xl font-bold mb-2 uppercase tracking-wide">{currentTask.title}</h2>
-                <p className="text-lg font-medium uppercase tracking-wide opacity-90">{currentTask.elderName}</p>
+                <p className="text-lg font-medium uppercase tracking-wide opacity-90">{currentTask.clientName}</p>
                 <p className="text-sm opacity-75 mt-6">{currentTask.description}</p>
               </div>
 
@@ -224,7 +224,7 @@ const StudentDashboard = () => {
         ) : (
           <div className="space-y-6">
             <EarningsDashboard />
-            <ActiveTasksList userType="student" />
+            <ActiveTasksList userType="worker" />
           </div>
         )}
       </main>
@@ -232,4 +232,4 @@ const StudentDashboard = () => {
   );
 };
 
-export default StudentDashboard;
+export default FindWork;
