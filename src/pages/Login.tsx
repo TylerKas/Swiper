@@ -10,6 +10,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithGoogle } from "@/firebase"; 
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/firebase";
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -30,16 +32,17 @@ const Login = () => {
   const handleLogin = async (data: LoginForm) => {
     setLoading(true);
     try {
-      // Mock authentication - always succeed
+      await signInWithEmailAndPassword(auth, data.email, data.password);
       toast({
         title: 'Welcome back!',
         description: 'You have successfully logged in.'
       });
       navigate('/');
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Login error:", error);
       toast({
         title: 'Error',
-        description: 'Something went wrong. Please try again.',
+        description: error.message || 'Something went wrong. Please try again.',
         variant: 'destructive'
       });
     } finally {
@@ -50,7 +53,7 @@ const Login = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      await signInWithGoogle(); //sign in part
+      await signInWithGoogle();
       toast({
         title: 'Welcome!',
         description: 'Google sign in successful.'
