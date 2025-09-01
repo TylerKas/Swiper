@@ -9,6 +9,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
+import { signInWithGoogle } from "@/firebase"; 
+
 
 const signupSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -53,21 +55,23 @@ const Signup = () => {
   const handleGoogleSignUp = async () => {
     setLoading(true);
     try {
+      await signInWithGoogle();      // <-- same call
       toast({
         title: 'Success!',
         description: 'Google sign up successful!'
       });
       navigate('/');
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Google sign-up error:", error);
       toast({
         title: 'Error',
-        description: 'Something went wrong with Google sign up.',
+        description: error.message || 'Something went wrong with Google sign up.',
         variant: 'destructive'
       });
     } finally {
       setLoading(false);
     }
-  };
+  };  
 
   return (
     <div className="min-h-screen bg-gradient-primary">
