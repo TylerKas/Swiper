@@ -28,7 +28,6 @@ const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { signOut, user } = useAuth();
-  const [loading, setLoading] = useState(false);
   const addressInputRef = useRef<HTMLInputElement | null>(null);
   const [profileData, setProfileData] = useState<ProfileData>({
     full_name: '',
@@ -58,27 +57,6 @@ const Profile = () => {
 
   const handleRadiusChange = (value: number[]) => {
     setProfileData(prev => ({ ...prev, miles_radius: value[0] }));
-  };
-
-  const handleSave = async () => {
-    try {
-      setLoading(true);
-
-      toast({
-        title: "Success",
-        description: "Profile saved successfully",
-      });
-
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleSignOut = async () => {
@@ -310,7 +288,6 @@ const Profile = () => {
               />              
             </div>
 
-            {/* Removed City/State/ZIP inputs as requested */}
             <div className="mb-8">
               <Label>Miles Away Radius: {profileData.miles_radius} miles</Label>
               <Slider
@@ -324,21 +301,13 @@ const Profile = () => {
             </div>
           </div>
 
-
-          <div className="flex gap-4">
+          <div className="flex justify-center">
             <Button 
               onClick={() => navigate('/')}
               variant="outline"
-              className="flex-1"
+              className="w-full max-w-xs"
             >
               Back to Home
-            </Button>
-            <Button 
-              onClick={handleSave}
-              className="flex-1 bg-orange-500 hover:bg-orange-600"
-              disabled={loading}
-            >
-              {loading ? "Saving..." : "Save Profile"}
             </Button>
           </div>
         </Card>
