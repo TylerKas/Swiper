@@ -75,3 +75,49 @@ export async function signInWithEmail(email: string, password: string) {
 export async function signOutUser() {
   return signOut(auth);
 }
+
+export type ProfileData = {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  age?: number;
+  phone?: string;
+  bio?: string;
+  address?: string;
+  radiusMiles?: number;
+};
+
+// Reference to the current user's /users/{uid} doc
+const userDocRef = (uid?: string) => {
+  const u = uid ?? auth.currentUser?.uid;
+  if (!u) throw new Error("Not signed in");
+  return doc(db, "users", u);
+};
+
+// Load profile once (returns null if none saved yet)
+export async function loadProfile(uid?: string): Promise<ProfileData | null> {
+  const snap = await getDoc(userDocRef(uid));
+  if (!snap.exists()) return null;
+  const data = snap.data() as any;
+  return (data.profile ?? null) as ProfileData | null;
+}
+
+// Live listener (optional; unsubscribe on unmount)
+export function watchProfile(
+  cb: (p: ProfileData | null) => void,
+  uid?: string
+) {
+  return onSnapshot(userDocRef(uid), (snap) => {
+    const data = snap.exists() ? ((snap.data() as any).profile ?? null) : null;
+    cb(data as ProfileData | null);
+  });
+}
+
+// Save/merge profile fields for this user
+export async function saveProfile(partial: ProfileData, uid?: string) {
+  await setDoc(
+    userDocRef(uid),
+    { profile: { ...partial }, updatedAt: serverTimestamp() },
+    { merge: true }
+  );
+}
