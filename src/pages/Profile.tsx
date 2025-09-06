@@ -38,6 +38,40 @@ const Profile = () => {
 
   // Function to save profile data immediately
 
+  // Helper function to delete photo from Firebase Storage
+  const deletePhotoFromStorage = async (photoUrl: string) => {
+    if (!photoUrl) return;
+    
+    try {
+      let imageRef;
+      
+      if (photoUrl.startsWith('http')) {
+        // Extract the file path from the download URL
+        // Firebase Storage URLs have the format: https://firebasestorage.googleapis.com/v0/b/bucket/o/path%2Fto%2Ffile?alt=media&token=...
+        const url = new URL(photoUrl);
+        const pathMatch = url.pathname.match(/\/o\/(.+?)(\?|$)/);
+        if (pathMatch) {
+          const filePath = decodeURIComponent(pathMatch[1]);
+          imageRef = ref(storage, filePath);
+        }
+      } else {
+        // Direct path reference
+        imageRef = ref(storage, photoUrl);
+      }
+      
+      if (imageRef) {
+        await deleteObject(imageRef);
+        console.log('Photo deleted from Firebase Storage');
+        return true;
+      }
+    } catch (error) {
+      console.log('Error deleting photo from storage:', error.message);
+      return false;
+    }
+    
+    return false;
+  };
+
   // Function to save profile data immediately with retry logic
   const saveProfileImmediately = async (retryCount = 0) => {
     if (!uid) {
@@ -247,17 +281,7 @@ const Profile = () => {
     try {
       // Delete old image if it exists
       if (profileData.avatar_url) {
-        try {
-          // For download URLs, we can't delete them directly
-          // The old image will be overwritten by the new one
-          if (!profileData.avatar_url.startsWith('http')) {
-            const oldImageRef = ref(storage, profileData.avatar_url);
-            await deleteObject(oldImageRef);
-          }
-        } catch (error) {
-          // Ignore errors when deleting old image
-          console.log('Old image not found or already deleted');
-        }
+        await deletePhotoFromStorage(profileData.avatar_url);
       }
 
       // Upload new image
@@ -306,11 +330,7 @@ const Profile = () => {
 
     try {
       // Delete from Firebase Storage
-      // For download URLs, we can't delete them directly
-      if (!profileData.avatar_url.startsWith('http')) {
-        const imageRef = ref(storage, profileData.avatar_url);
-        await deleteObject(imageRef);
-      }
+      await deletePhotoFromStorage(profileData.avatar_url);
 
       // Update profile immediately in local state
       const updatedProfile = { ...profileData, avatar_url: '' };
