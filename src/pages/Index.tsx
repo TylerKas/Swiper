@@ -18,7 +18,7 @@ const Index = () => {
 
   // Check if profile is complete
   const isProfileComplete = () => {
-    if (!profileData) return false;
+    if (!user || !profileData) return false;
     
     // Check mandatory fields
     const mandatoryFields = [
@@ -28,7 +28,15 @@ const Index = () => {
       profileData.address
     ];
     
-    return mandatoryFields.every(field => field && field.trim() !== '');
+    const isComplete = mandatoryFields.every(field => field && field.trim() !== '');
+    console.log('Profile completion check:', { 
+      user: !!user, 
+      profileData: !!profileData, 
+      fields: mandatoryFields, 
+      isComplete 
+    });
+    
+    return isComplete;
   };
 
   // Load profile data from Firestore
@@ -180,25 +188,29 @@ const Index = () => {
                 <Button
                   size="lg"
                   onClick={handleFindWorkClick}
-                  disabled={loading}
+                  disabled={loading || (user && !isProfileComplete())}
                   className="w-full sm:w-48 h-16 bg-white text-primary hover:bg-white/90 text-xl font-semibold shadow-warm rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Search className="h-6 w-6 mr-3" />
                   Find Work
                 </Button>
-                <p className="text-white/80 text-sm mt-2">Looking to earn money?</p>
+                <p className="text-white/80 text-sm mt-2">
+                  {user && !isProfileComplete() ? "Complete your profile first" : "Looking to earn money?"}
+                </p>
               </div>
               <div className="text-center">
                 <Button
                   size="lg"
                   onClick={handlePostJobClick}
-                  disabled={loading}
+                  disabled={loading || (user && !isProfileComplete())}
                   className="w-full sm:w-48 h-16 bg-white/20 backdrop-blur border-2 border-white/30 text-white hover:bg-white/30 text-xl font-semibold shadow-warm rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Plus className="h-6 w-6 mr-3" />
                   Post a Job
                 </Button>
-                <p className="text-white/80 text-sm mt-2">Need help with a task?</p>
+                <p className="text-white/80 text-sm mt-2">
+                  {user && !isProfileComplete() ? "Complete your profile first" : "Need help with a task?"}
+                </p>
               </div>
             </div>
           </div>

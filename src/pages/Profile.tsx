@@ -38,6 +38,18 @@ const Profile = () => {
 
   // Function to save profile data immediately
 
+  // Check if profile is complete
+  const isProfileComplete = () => {
+    const requiredFields = [
+      profileData.full_name,
+      profileData.phone,
+      profileData.age,
+      profileData.address
+    ];
+    
+    return requiredFields.every(field => field && field.trim() !== '');
+  };
+
   // Helper function to delete photo from Firebase Storage
   const deletePhotoFromStorage = async (photoUrl: string) => {
     if (!photoUrl) return;
@@ -134,31 +146,10 @@ const Profile = () => {
       }
     })();
 
-    // live updates - but only after initial load and only for non-empty fields
-    const unsub = watchProfile((p) => {
-      if (!p || isInitialLoad || isRemovingPhoto || isUploading) return;
-      
-      // Only update fields that are not currently being edited (empty in local state)
-      setProfileData(prev => {
-        const updated = { ...prev };
-        (Object.keys(p) as (keyof ProfileData)[]).forEach(key => {
-          if ((prev[key] ?? '') === '' && p[key] && p[key] !== '') {
-            (updated as any)[key] = p[key];
-          }
-        });
-        return updated;
-      });
-      
-      // Update address draft only if local address is empty
-      if (typeof p.address === 'string' && (profileData.address ?? '') === '') {
-        setAddressDraft(p.address);
-      }
-    }, uid);
-
-    // cleanup: unsubscribe + clear pending autosave
+    // No real-time updates to prevent interference with user edits
+    // cleanup: clear pending autosave
     return () => {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
-      unsub();
     };
   }, [uid, isInitialLoad, isRemovingPhoto, isUploading]);
 

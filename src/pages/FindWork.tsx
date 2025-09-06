@@ -7,6 +7,9 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import ActiveTasksList from "@/components/ActiveTasksList";
 import { EarningsDashboard } from "@/components/EarningsDashboard";
+import { useAuth } from "@/contexts/AuthContext";
+import { loadProfile, ProfileData } from "@/firebase";
+import { getOpenJobs } from "@/utils/jobs";
 
 interface Task {
   id: string;
@@ -29,53 +32,98 @@ const FindWork = () => {
   const [activeView, setActiveView] = useState<'discover' | 'active'>('discover');
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const uid = user?.uid;
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
 
+  // Check if profile is complete
+  const isProfileComplete = () => {
+    if (!profileData) return false;
+    
+    const mandatoryFields = [
+      profileData.full_name,
+      profileData.phone,
+      profileData.age,
+      profileData.address
+    ];
+    
+    return mandatoryFields.every(field => field && field.trim() !== '');
+  };
+
+  // Check profile completion on component mount
   useEffect(() => {
-    const fetchTasks = async () => {
+    const checkProfile = async () => {
+      if (!uid) {
+        navigate('/login');
+        return;
+      }
+
       try {
-        // Show mock data
-        const mockTasks: Task[] = [
-          {
-            id: '1',
-            title: 'Tech Support Needed',
-            description: 'Help setting up new smartphone and tablet',
-            clientName: 'Margaret Thompson',
-            client_id: 'client1',
-            location: 'Los Angeles',
-            payment: 99.98,
-            timeEstimate: '1 hour',
-            category: 'Technology',
-            urgency: 'This week'
-          },
-          {
-            id: '2',
-            title: 'Grocery Shopping',
-            description: 'Need help with grocery shopping and carrying bags',
-            clientName: 'Robert Williams',
-            client_id: 'client2',
-            location: 'Campus Area',
-            payment: 30,
-            timeEstimate: '1 hour',
-            category: 'Shopping',
-            urgency: 'Flexible'
-          }
+        const savedProfile = await loadProfile(uid);
+        setProfileData(savedProfile);
+        
+        // Check if profile is complete after loading
+        const mandatoryFields = [
+          savedProfile?.full_name,
+          savedProfile?.phone,
+          savedProfile?.age,
+          savedProfile?.address
         ];
         
-        setTasks(mockTasks);
+        const isComplete = mandatoryFields.every(field => field && field.trim() !== '');
+        
+        if (!isComplete) {
+          toast({
+            title: "Profile Incomplete",
+            description: "Please complete your profile before finding work",
+            variant: "destructive",
+          });
+          navigate('/profile');
+          return;
+        }
       } catch (error) {
-        console.error('Error loading tasks:', error);
+        console.error('Error loading profile:', error);
+        navigate('/profile');
+      }
+    };
+
+    checkProfile();
+  }, [uid, navigate, toast]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const rows = await getOpenJobs(25); // from utils/jobs.ts
+        // Adapt Firestore Job → Task shape the card expects
+        const mapped: Task[] = rows.map(j => ({
+          id: j.id,
+          title: j.title,
+          description: j.description,
+          clientName: "Client",         // placeholder until you store/display poster’s name
+          clientAge: undefined,         // optional
+          client_id: j.userId,          // owner of the job
+          location: "Nearby",           // placeholder (no location in Job yet)
+          payment: j.pay,               // Firestore field is 'pay'
+          timeEstimate: j.estimatedTime,// Firestore field is 'estimatedTime'
+          category: j.category,
+          urgency: j.urgency || "Flexible",
+        }));
+        setTasks(mapped);
+      } catch (err) {
+        console.error("Error loading jobs:", err);
         toast({
-          title: "Error loading tasks",
-          description: "Something went wrong. Please try again.",
-          variant: "destructive"
+          title: "Error loading jobs",
+          description: "Please try again.",
+          variant: "destructive",
         });
       } finally {
         setLoading(false);
       }
     };
-
-    fetchTasks();
-  }, [toast]);
+  
+    load();
+  }, []);
+  
 
   const currentTask = tasks[currentTaskIndex];
 
