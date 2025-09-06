@@ -5,21 +5,8 @@ import { Users, Heart, HandHeart, User, Plus, Search, LogOut } from "lucide-reac
 import heroImage from "@/assets/hero-image.jpg";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { loadProfile, ProfileData } from "@/firebase";
 import { useState, useEffect } from "react";
-
-interface ProfileData {
-  full_name?: string;
-  email?: string;
-  phone?: string;
-  bio?: string;
-  age?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zip_code?: string;
-  miles_radius?: number;
-  avatar_url?: string;
-}
 
 const Index = () => {
   const navigate = useNavigate();
@@ -43,36 +30,28 @@ const Index = () => {
     return mandatoryFields.every(field => field && field.trim() !== '');
   };
 
-  // Load profile data (this would typically come from your backend)
+  // Load profile data from Firestore
   useEffect(() => {
-    if (user) {
-      // For now, we'll simulate loading profile data
-      // In a real app, you'd fetch this from your database
-      setLoading(true);
+    const loadProfileData = async () => {
+      if (!user?.id) {
+        setProfileData(null);
+        return;
+      }
       
-      // Simulate API call
-      setTimeout(() => {
-        // Mock profile data - in reality this would come from your backend
-        const mockProfileData: ProfileData = {
-          full_name: '',
-          email: user.email,
-          phone: '',
-          bio: '',
-          age: '',
-          address: '',
-          city: '',
-          state: '',
-          zip_code: '',
-          miles_radius: 10,
-          avatar_url: '',
-        };
-        setProfileData(mockProfileData);
+      try {
+        setLoading(true);
+        const savedProfile = await loadProfile(user.id);
+        setProfileData(savedProfile);
+      } catch (error) {
+        console.error('Error loading profile data:', error);
+        setProfileData(null);
+      } finally {
         setLoading(false);
-      }, 500);
-    } else {
-      setProfileData(null);
-    }
-  }, [user]);
+      }
+    };
+
+    loadProfileData();
+  }, [user?.id]);
 
   const handleFindWorkClick = () => {
     if (!user) {
@@ -206,7 +185,7 @@ const Index = () => {
                   <Search className="h-6 w-6 mr-3" />
                   Find Work
                 </Button>
-                <p className="text-white/80 text-sm mt-2">Need help with a task?</p>
+                <p className="text-white/80 text-sm mt-2">Looking to earn money?</p>
               </div>
               <div className="text-center">
                 <Button
@@ -218,7 +197,7 @@ const Index = () => {
                   <Plus className="h-6 w-6 mr-3" />
                   Post a Job
                 </Button>
-                <p className="text-white/80 text-sm mt-2">Looking to earn money?</p>
+                <p className="text-white/80 text-sm mt-2">Need help with a task?</p>
               </div>
             </div>
           </div>

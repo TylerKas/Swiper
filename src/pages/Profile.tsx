@@ -6,29 +6,19 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, User, MapPin, Mail, Phone, Upload, Heart } from 'lucide-react';
+import { ArrowLeft, User, MapPin, Mail, Phone, Upload, Heart, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import React, { useEffect, useRef, useState } from 'react';
-
-interface ProfileData {
-  full_name?: string;
-  email?: string;
-  phone?: string;
-  bio?: string;
-  age?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  zip_code?: string;
-  miles_radius?: number;
-  avatar_url?: string;
-}
+import { loadProfile, watchProfile, saveProfile, ProfileData, storage } from '@/firebase';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { signOut, user } = useAuth();
   const addressInputRef = useRef<HTMLInputElement | null>(null);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [profileData, setProfileData] = useState<ProfileData>({
     full_name: '',
     email: user?.email || '',
@@ -36,31 +26,138 @@ const Profile = () => {
     bio: '',
     age: '',
     address: '',
-    city: '',
-    state: '',
-    zip_code: '',
     miles_radius: 10,
     avatar_url: '',
   });
   const [addressDraft, setAddressDraft] = useState(profileData.address || "");
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isRemovingPhoto, setIsRemovingPhoto] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  // Update email when user data is available
+  // Function to save profile data immediately
+
+  // Function to save profile data immediately
+  const saveProfileImmediately = async () => {
+    if (!user?.id) {
+      console.log('No user ID, cannot save profile');
+      return;
+    }
+
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+    }
+    
+    try {
+      await saveProfile(profileData, user.id);
+    } catch (error) {
+      console.error('Error saving profile immediately:', error);
+    }
+  };
+
+  // 1) Keep email in sync with Firebase auth
   useEffect(() => {
     if (user?.email) {
-      setProfileData(prev => ({ ...prev, email: user.email }));
+      setProfileData(prev => ({ ...prev, email: user.email! }));
     }
   }, [user?.email]);
 
+  // 2) Load once + watch live profile when the user id is ready
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // initial one-shot load
+    (async () => {
+      try {
+        const p = await loadProfile(user.id);
+        if (p) {
+          setProfileData(prev => ({ ...prev, ...p }));
+          if (typeof p.address === 'string') setAddressDraft(p.address);
+        }
+        setIsInitialLoad(false);
+      } catch (e) {
+        console.error("loadProfile error:", e);
+        setIsInitialLoad(false);
+      }
+    })();
+
+    // live updates - but only after initial load and only for non-empty fields
+    const unsub = watchProfile((p) => {
+      if (!p || isInitialLoad || isRemovingPhoto || isUploading) return;
+      
+      // Only update fields that are not currently being edited (empty in local state)
+      setProfileData(prev => {
+        const updated = { ...prev };
+        Object.keys(p).forEach(key => {
+          const keyTyped = key as keyof ProfileData;
+          // Only update if the local field is empty and the remote field has data
+          if (prev[keyTyped] === '' && p[keyTyped] && p[keyTyped] !== '') {
+            (updated as any)[keyTyped] = p[keyTyped];
+          }
+        });
+        return updated;
+      });
+      
+      // Update address draft only if local address is empty
+      if (typeof p.address === 'string' && profileData.address === '') {
+        setAddressDraft(p.address);
+      }
+    }, user.id);
+
+    // cleanup: unsubscribe + clear pending autosave
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+      unsub();
+    };
+  }, [user?.id, isInitialLoad, isRemovingPhoto, isUploading]);
+
+  // Cleanup preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
   const handleInputChange = (field: string, value: string) => {
-    setProfileData(prev => ({ ...prev, [field]: value }));
+    setProfileData(prev => {
+      const next = { ...prev, [field]: value };
+
+      // Debounced autosave (600ms after user stops typing)
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = setTimeout(() => {
+        if (user?.id) {
+          saveProfile(next, user.id).catch((err) => console.error('autosave failed', err));
+        }
+      }, 600);
+
+      return next;
+    });
   };
 
   const handleRadiusChange = (value: number[]) => {
-    setProfileData(prev => ({ ...prev, miles_radius: value[0] }));
+    const miles = value[0];
+    setProfileData(prev => {
+      const next = { ...prev, miles_radius: miles };
+
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = setTimeout(() => {
+        if (user?.id) {
+          saveProfile(next, user.id).catch((err) => console.error('autosave failed', err));
+        }
+      }, 600);
+
+      return next;
+    });
   };
 
   const handleSignOut = async () => {
     try {
+      // Save profile data before signing out
+      await saveProfileImmediately();
+      
       await signOut();
       navigate('/');
     } catch (error) {
@@ -73,26 +170,143 @@ const Profile = () => {
     }
   };
 
-  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Check file size (2MB limit)
-      const maxSize = 2 * 1024 * 1024; // 2MB in bytes
-      if (file.size > maxSize) {
-        toast({
-          title: "File Too Large",
-          description: "Please select an image smaller than 2MB",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // For now, just show a toast. File upload can be implemented later with storage
-      toast({
-        title: "Photo Upload",
-        description: "Photo upload feature coming soon!",
-      });
+  const handleBackToHome = async () => {
+    try {
+      // Save profile data before navigating away
+      await saveProfileImmediately();
+      navigate('/');
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      // Still navigate even if save fails
+      navigate('/');
     }
+  };
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user?.id) return;
+
+    // Check file size (2MB limit)
+    const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+    if (file.size > maxSize) {
+      toast({
+        title: "File Too Large",
+        description: "Please select an image smaller than 2MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File Type",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create preview URL immediately
+    const preview = URL.createObjectURL(file);
+    setPreviewUrl(preview);
+
+    setIsUploading(true);
+
+    try {
+      // Delete old image if it exists
+      if (profileData.avatar_url) {
+        try {
+          const oldImageRef = ref(storage, profileData.avatar_url);
+          await deleteObject(oldImageRef);
+        } catch (error) {
+          // Ignore errors when deleting old image
+          console.log('Old image not found or already deleted');
+        }
+      }
+
+      // Upload new image
+      const imageRef = ref(storage, `profile-photos/${user.id}/${Date.now()}_${file.name}`);
+      const snapshot = await uploadBytes(imageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      // Update profile with new image URL
+      const updatedProfile = { ...profileData, avatar_url: downloadURL };
+      setProfileData(updatedProfile);
+      
+      // Clear preview URL and set actual URL
+      setPreviewUrl(null);
+      
+      // Save to Firestore
+      await saveProfile(updatedProfile, user.id);
+
+      toast({
+        title: "Success",
+        description: "Profile photo uploaded successfully!",
+      });
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      // Clear preview on error
+      setPreviewUrl(null);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload photo. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!user?.id || !profileData.avatar_url) return;
+
+    setIsRemovingPhoto(true);
+    // Clear any preview URL
+    setPreviewUrl(null);
+
+    try {
+      // Delete from Firebase Storage
+      const imageRef = ref(storage, profileData.avatar_url);
+      await deleteObject(imageRef);
+
+      // Update profile immediately in local state
+      const updatedProfile = { ...profileData, avatar_url: '' };
+      setProfileData(updatedProfile);
+      
+      // Save to Firestore
+      await saveProfile(updatedProfile, user.id);
+
+      toast({
+        title: "Success",
+        description: "Profile photo removed successfully!",
+      });
+    } catch (error) {
+      console.error('Error removing photo:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove photo. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      // Re-enable real-time listener after a short delay
+      setTimeout(() => {
+        setIsRemovingPhoto(false);
+      }, 1000);
+    }
+  };
+
+  // Helper function to get first and last name from full_name
+  const getFirstName = () => {
+    return profileData.full_name?.split(' ')[0] || '';
+  };
+
+  const getLastName = () => {
+    return profileData.full_name?.split(' ').slice(1).join(' ') || '';
   };
 
   return (
@@ -104,7 +318,7 @@ const Profile = () => {
             <Button 
               variant="ghost" 
               size="icon"
-              onClick={() => navigate('/')}
+              onClick={handleBackToHome}
               className="hover:bg-gray-100"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -141,11 +355,12 @@ const Profile = () => {
                 <Label htmlFor="firstName">First Name</Label>
                 <Input
                   id="firstName"
-                  value={profileData.full_name?.split(' ')[0] || ''}
+                  value={getFirstName()}
                   onChange={(e) => {
-                    const lastName = profileData.full_name?.split(' ').slice(1).join(' ') || '';
                     const firstName = e.target.value.slice(0, 10); // 10 character limit
-                    handleInputChange('full_name', `${firstName} ${lastName}`.trim());
+                    const lastName = getLastName();
+                    const fullName = lastName ? `${firstName} ${lastName}` : firstName;
+                    handleInputChange('full_name', fullName);
                   }}
                   placeholder="John"
                   className="mt-1"
@@ -155,11 +370,12 @@ const Profile = () => {
                 <Label htmlFor="lastName">Last Name</Label>
                 <Input
                   id="lastName"
-                  value={profileData.full_name?.split(' ').slice(1).join(' ') || ''}
+                  value={getLastName()}
                   onChange={(e) => {
-                    const firstName = profileData.full_name?.split(' ')[0] || '';
+                    const firstName = getFirstName();
                     const lastName = e.target.value.slice(0, 15); // 15 character limit
-                    handleInputChange('full_name', `${firstName} ${lastName}`.trim());
+                    const fullName = firstName ? `${firstName} ${lastName}` : lastName;
+                    handleInputChange('full_name', fullName);
                   }}
                   placeholder="Doe"
                   className="mt-1"
@@ -230,16 +446,76 @@ const Profile = () => {
             <div className="mb-6">
               <Label htmlFor="photo">Profile Photo (Optional)</Label>
               <div className="mt-1">
-                <label className="flex items-center justify-center w-full h-12 border-2 border-dashed border-gray-300 rounded-md cursor-pointer hover:border-orange-400 transition-colors">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                  />
-                  <Upload className="h-4 w-4 mr-2 text-gray-400" />
-                  <span className="text-gray-600">Upload Photo (Max 2MB)</span>
-                </label>
+                {(profileData.avatar_url || previewUrl) ? (
+                  <div className="flex items-center space-x-4">
+                    <div className="relative">
+                      <img
+                        src={previewUrl || profileData.avatar_url}
+                        alt="Profile"
+                        className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                        onError={(e) => {
+                          // If image fails to load, show a placeholder
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          target.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                      <div className="hidden w-20 h-20 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
+                        <User className="h-8 w-8 text-gray-400" />
+                      </div>
+                      {profileData.avatar_url && (
+                        <Button
+                          size="icon"
+                          variant="destructive"
+                          className="absolute -top-2 -right-2 w-6 h-6 rounded-full shadow-sm hover:scale-110 transition-transform"
+                          onClick={handleRemovePhoto}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <label className="flex items-center justify-center w-full h-12 border-2 border-dashed border-orange-300 rounded-md cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition-colors">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoUpload}
+                          className="hidden"
+                          disabled={isUploading}
+                        />
+                        <Upload className="h-4 w-4 mr-2 text-orange-500" />
+                        <span className="text-orange-600 font-medium">
+                          {isUploading ? 'Uploading...' : 'Change Photo'}
+                        </span>
+                      </label>
+                      <p className="text-xs text-gray-500 mt-1">Max 2MB • JPG, PNG, GIF</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-4">
+                    <div className="w-20 h-20 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center">
+                      <User className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="flex items-center justify-center w-full h-12 border-2 border-dashed border-gray-300 rounded-md cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition-colors">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handlePhotoUpload}
+                          className="hidden"
+                          disabled={isUploading}
+                        />
+                        <Upload className="h-4 w-4 mr-2 text-gray-400" />
+                        <span className="text-gray-600">
+                          {isUploading ? 'Uploading...' : 'Upload Photo'}
+                        </span>
+                      </label>
+                      <p className="text-xs text-gray-500 mt-1">Max 2MB • JPG, PNG, GIF</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -303,7 +579,7 @@ const Profile = () => {
 
           <div className="flex justify-center">
             <Button 
-              onClick={() => navigate('/')}
+              onClick={handleBackToHome}
               variant="outline"
               className="w-full max-w-xs"
             >

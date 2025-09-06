@@ -24,6 +24,7 @@ import {
   query,
   orderBy
 } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -48,7 +49,82 @@ const analytics = getAnalytics(app);
 export const auth = getAuth(app);
 export const provider = new GoogleAuthProvider();
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 auth.languageCode = 'en';
+
+// Profile data interface that matches the Profile component
+export interface ProfileData {
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  bio?: string;
+  age?: string;
+  address?: string;
+  miles_radius?: number;
+  avatar_url?: string;
+  updated_at?: any;
+}
+
+// Reference to the current user's profile document
+const userProfileRef = (uid: string) => {
+  if (!uid) throw new Error("User ID is required");
+  return doc(db, "profiles", uid);
+};
+
+// Load profile once (returns null if none saved yet)
+export async function loadProfile(uid: string): Promise<ProfileData | null> {
+  try {
+    const snap = await getDoc(userProfileRef(uid));
+    if (!snap.exists()) {
+      return null;
+    }
+    const data = snap.data() as ProfileData;
+    return data;
+  } catch (error) {
+    console.error('Error loading profile:', error);
+    return null;
+  }
+}
+
+// Live listener for profile changes
+export function watchProfile(
+  cb: (p: ProfileData | null) => void,
+  uid: string
+) {
+  return onSnapshot(userProfileRef(uid), (snap) => {
+    const data = snap.exists() ? snap.data() as ProfileData : null;
+    cb(data);
+  });
+}
+
+// Save/merge profile fields for this user
+export async function saveProfile(partial: ProfileData, uid: string) {
+  try {
+    const profileRef = userProfileRef(uid);
+    
+    // Filter out empty fields before saving
+    const cleanData = Object.fromEntries(
+      Object.entries(partial).filter(([key, value]) => {
+        // Keep non-empty strings, numbers, and other non-empty values
+        if (value === null || value === undefined) return false;
+        if (typeof value === 'string' && value.trim() === '') return false;
+        return true;
+      })
+    );
+    
+    await setDoc(
+      profileRef,
+      { 
+        ...cleanData, 
+        updated_at: serverTimestamp() 
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('Error saving profile:', error);
+    throw error;
+  }
+}
 
 // Login with Google (popup)
 export async function signInWithGoogle() {
@@ -74,50 +150,4 @@ export async function signInWithEmail(email: string, password: string) {
 // Sign out user
 export async function signOutUser() {
   return signOut(auth);
-}
-
-export type ProfileData = {
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  age?: number;
-  phone?: string;
-  bio?: string;
-  address?: string;
-  radiusMiles?: number;
-};
-
-// Reference to the current user's /users/{uid} doc
-const userDocRef = (uid?: string) => {
-  const u = uid ?? auth.currentUser?.uid;
-  if (!u) throw new Error("Not signed in");
-  return doc(db, "users", u);
-};
-
-// Load profile once (returns null if none saved yet)
-export async function loadProfile(uid?: string): Promise<ProfileData | null> {
-  const snap = await getDoc(userDocRef(uid));
-  if (!snap.exists()) return null;
-  const data = snap.data() as any;
-  return (data.profile ?? null) as ProfileData | null;
-}
-
-// Live listener (optional; unsubscribe on unmount)
-export function watchProfile(
-  cb: (p: ProfileData | null) => void,
-  uid?: string
-) {
-  return onSnapshot(userDocRef(uid), (snap) => {
-    const data = snap.exists() ? ((snap.data() as any).profile ?? null) : null;
-    cb(data as ProfileData | null);
-  });
-}
-
-// Save/merge profile fields for this user
-export async function saveProfile(partial: ProfileData, uid?: string) {
-  await setDoc(
-    userDocRef(uid),
-    { profile: { ...partial }, updatedAt: serverTimestamp() },
-    { merge: true }
-  );
 }
