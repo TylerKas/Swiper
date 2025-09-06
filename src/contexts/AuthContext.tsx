@@ -4,6 +4,7 @@ import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
 
 interface User {
   id: string;
+  uid: string;
   email: string;
   displayName?: string;
   photoURL?: string;
@@ -34,6 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (firebaseUser) {
         setUser({
           id: firebaseUser.uid,
+          uid: firebaseUser.uid,
           email: firebaseUser.email || '',
           displayName: firebaseUser.displayName || undefined,
           photoURL: firebaseUser.photoURL || undefined,

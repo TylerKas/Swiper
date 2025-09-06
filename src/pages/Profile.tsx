@@ -17,6 +17,7 @@ const Profile = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { signOut, user } = useAuth();
+  const uid = user?.uid;
   const addressInputRef = useRef<HTMLInputElement | null>(null);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -38,10 +39,10 @@ const Profile = () => {
 
   // Function to save profile data immediately
 
-  // Function to save profile data immediately
-  const saveProfileImmediately = async () => {
-    if (!user?.id) {
-      console.log('No user ID, cannot save profile');
+  // Function to save profile data immediately with retry logic
+  const saveProfileImmediately = async (retryCount = 0) => {
+    if (!uid) {
+      console.log('No user UID, cannot save profile');
       return;
     }
 
@@ -51,25 +52,55 @@ const Profile = () => {
     }
     
     try {
-      console.log('Saving profile data:', profileData);
-      await debugProfileSave(user.id, profileData);
-      await saveProfile(profileData, user.id);
+      await saveProfile(profileData, uid);
       console.log('Profile saved successfully');
     } catch (error) {
       console.error('Error saving profile immediately:', error);
+      
+      // Retry logic for cross-device issues
+      if (retryCount < 3) {
+        console.log(`Retrying save profile (attempt ${retryCount + 1})`);
+        setTimeout(() => {
+          saveProfileImmediately(retryCount + 1);
+        }, 1000 * (retryCount + 1)); // Exponential backoff
+      } else {
+        toast({
+          title: "Save Failed",
+          description: "Unable to save profile. Please check your connection and try again.",
+          variant: "destructive",
+        });
+      }
     }
   };
+
+  // Debug function to log user and profile state
+  const debugUserState = () => {
+    console.log('=== DEBUG USER STATE ===');
+    console.log('User ID:', user?.id);
+    console.log('User UID:', user?.uid);
+    console.log('User Email:', user?.email);
+    console.log('Profile Data:', profileData);
+    console.log('Is Initial Load:', isInitialLoad);
+    console.log('========================');
+  };
+
+  // Sanity logs for debugging
+  useEffect(() => {
+    console.log('Auth user:', { uid: user?.uid, email: user?.email });
+  }, [user]);
 
   // 1) Keep email in sync with Firebase auth
   useEffect(() => {
     if (user?.email) {
       setProfileData(prev => ({ ...prev, email: user.email! }));
     }
-  }, [user?.email]);
+    // Debug user state when user changes
+    debugUserState();
+  }, [user?.email, user?.id]);
 
   // 2) Load once + watch live profile when the user id is ready
   useEffect(() => {
-    if (!user?.id) return;
+    if (!uid) return;
 
     // Debug Firebase connection
     debugFirebaseConnection();
@@ -77,9 +108,7 @@ const Profile = () => {
     // initial one-shot load
     (async () => {
       try {
-        console.log('Loading profile for user:', user.id);
-        const p = await loadProfile(user.id);
-        console.log('Loaded profile data:', p);
+        const p = await loadProfile(uid);
         if (p) {
           setProfileData(prev => ({ ...prev, ...p }));
           if (typeof p.address === 'string') setAddressDraft(p.address);
@@ -98,28 +127,26 @@ const Profile = () => {
       // Only update fields that are not currently being edited (empty in local state)
       setProfileData(prev => {
         const updated = { ...prev };
-        Object.keys(p).forEach(key => {
-          const keyTyped = key as keyof ProfileData;
-          // Only update if the local field is empty and the remote field has data
-          if (prev[keyTyped] === '' && p[keyTyped] && p[keyTyped] !== '') {
-            (updated as any)[keyTyped] = p[keyTyped];
+        (Object.keys(p) as (keyof ProfileData)[]).forEach(key => {
+          if ((prev[key] ?? '') === '' && p[key] && p[key] !== '') {
+            (updated as any)[key] = p[key];
           }
         });
         return updated;
       });
       
       // Update address draft only if local address is empty
-      if (typeof p.address === 'string' && profileData.address === '') {
+      if (typeof p.address === 'string' && (profileData.address ?? '') === '') {
         setAddressDraft(p.address);
       }
-    }, user.id);
+    }, uid);
 
     // cleanup: unsubscribe + clear pending autosave
     return () => {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
       unsub();
     };
-  }, [user?.id, isInitialLoad, isRemovingPhoto, isUploading]);
+  }, [uid, isInitialLoad, isRemovingPhoto, isUploading]);
 
   // Cleanup preview URL on unmount
   useEffect(() => {
@@ -137,8 +164,16 @@ const Profile = () => {
       // Debounced autosave (600ms after user stops typing)
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
       autosaveTimer.current = setTimeout(() => {
-        if (user?.id) {
-          saveProfile(next, user.id).catch((err) => console.error('autosave failed', err));
+        if (uid) {
+          saveProfile(next, uid).catch((err) => {
+            console.error('autosave failed', err);
+            // Show user-friendly error message
+            toast({
+              title: "Auto-save Failed",
+              description: "Your changes may not be saved. Please try again.",
+              variant: "destructive",
+            });
+          });
         }
       }, 600);
 
@@ -153,8 +188,15 @@ const Profile = () => {
 
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
       autosaveTimer.current = setTimeout(() => {
-        if (user?.id) {
-          saveProfile(next, user.id).catch((err) => console.error('autosave failed', err));
+        if (uid) {
+          saveProfile(next, uid).catch((err) => {
+            console.error('autosave failed', err);
+            toast({
+              title: "Auto-save Failed",
+              description: "Your changes may not be saved. Please try again.",
+              variant: "destructive",
+            });
+          });
         }
       }, 600);
 
@@ -193,7 +235,7 @@ const Profile = () => {
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !user?.id) return;
+    if (!file || !uid) return;
 
     // Check file size (2MB limit)
     const maxSize = 2 * 1024 * 1024; // 2MB in bytes
@@ -226,8 +268,12 @@ const Profile = () => {
       // Delete old image if it exists
       if (profileData.avatar_url) {
         try {
-          const oldImageRef = ref(storage, profileData.avatar_url);
-          await deleteObject(oldImageRef);
+          // For download URLs, we can't delete them directly
+          // The old image will be overwritten by the new one
+          if (!profileData.avatar_url.startsWith('http')) {
+            const oldImageRef = ref(storage, profileData.avatar_url);
+            await deleteObject(oldImageRef);
+          }
         } catch (error) {
           // Ignore errors when deleting old image
           console.log('Old image not found or already deleted');
@@ -235,7 +281,7 @@ const Profile = () => {
       }
 
       // Upload new image
-      const imageRef = ref(storage, `profile-photos/${user.id}/${Date.now()}_${file.name}`);
+      const imageRef = ref(storage, `profile-photos/${uid}/${Date.now()}_${file.name}`);
       const snapshot = await uploadBytes(imageRef, file);
       const downloadURL = await getDownloadURL(snapshot.ref);
 
@@ -247,7 +293,7 @@ const Profile = () => {
       setPreviewUrl(null);
       
       // Save to Firestore
-      await saveProfile(updatedProfile, user.id);
+      await saveProfile(updatedProfile, uid);
 
       toast({
         title: "Success",
@@ -272,7 +318,7 @@ const Profile = () => {
   };
 
   const handleRemovePhoto = async () => {
-    if (!user?.id || !profileData.avatar_url) return;
+    if (!uid || !profileData.avatar_url) return;
 
     setIsRemovingPhoto(true);
     // Clear any preview URL
@@ -280,15 +326,18 @@ const Profile = () => {
 
     try {
       // Delete from Firebase Storage
-      const imageRef = ref(storage, profileData.avatar_url);
-      await deleteObject(imageRef);
+      // For download URLs, we can't delete them directly
+      if (!profileData.avatar_url.startsWith('http')) {
+        const imageRef = ref(storage, profileData.avatar_url);
+        await deleteObject(imageRef);
+      }
 
       // Update profile immediately in local state
       const updatedProfile = { ...profileData, avatar_url: '' };
       setProfileData(updatedProfile);
       
       // Save to Firestore
-      await saveProfile(updatedProfile, user.id);
+      await saveProfile(updatedProfile, uid);
 
       toast({
         title: "Success",

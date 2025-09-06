@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 const Index = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const uid = user?.uid;
   const { toast } = useToast();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -33,14 +34,14 @@ const Index = () => {
   // Load profile data from Firestore
   useEffect(() => {
     const loadProfileData = async () => {
-      if (!user?.id) {
+      if (!uid) {
         setProfileData(null);
         return;
       }
       
       try {
         setLoading(true);
-        const savedProfile = await loadProfile(user.id);
+        const savedProfile = await loadProfile(uid);
         setProfileData(savedProfile);
       } catch (error) {
         console.error('Error loading profile data:', error);
@@ -51,7 +52,7 @@ const Index = () => {
     };
 
     loadProfileData();
-  }, [user?.id]);
+  }, [uid]);
 
   const handleFindWorkClick = () => {
     if (!user) {
