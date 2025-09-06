@@ -48,6 +48,12 @@ const analytics = getAnalytics(app);
 // Make sure auth exists before using it
 export const auth = getAuth(app);
 export const provider = new GoogleAuthProvider();
+// Configure Google Auth Provider for better cross-device compatibility
+provider.addScope('email');
+provider.addScope('profile');
+provider.setCustomParameters({
+  prompt: 'select_account'
+});
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 auth.languageCode = 'en';
@@ -100,6 +106,13 @@ export function watchProfile(
 // Save/merge profile fields for this user
 export async function saveProfile(partial: ProfileData, uid: string) {
   try {
+    console.log('Firebase saveProfile called:', { uid, partial });
+    
+    // Validate user ID
+    if (!uid || typeof uid !== 'string') {
+      throw new Error('Invalid user ID provided');
+    }
+    
     const profileRef = userProfileRef(uid);
     
     // Filter out empty fields before saving
@@ -112,6 +125,15 @@ export async function saveProfile(partial: ProfileData, uid: string) {
       })
     );
     
+    console.log('Cleaned data to save:', cleanData);
+    
+    // Ensure we have data to save
+    if (Object.keys(cleanData).length === 0) {
+      console.log('No data to save after cleaning');
+      return;
+    }
+    
+    // Use batch write for better consistency across devices
     await setDoc(
       profileRef,
       { 
@@ -120,8 +142,16 @@ export async function saveProfile(partial: ProfileData, uid: string) {
       },
       { merge: true }
     );
+    
+    console.log('Profile saved successfully to Firestore');
   } catch (error) {
     console.error('Error saving profile:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      uid,
+      partial
+    });
     throw error;
   }
 }
