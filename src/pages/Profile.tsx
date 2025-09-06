@@ -73,30 +73,13 @@ const Profile = () => {
     }
   };
 
-  // Debug function to log user and profile state
-  const debugUserState = () => {
-    console.log('=== DEBUG USER STATE ===');
-    console.log('User ID:', user?.id);
-    console.log('User UID:', user?.uid);
-    console.log('User Email:', user?.email);
-    console.log('Profile Data:', profileData);
-    console.log('Is Initial Load:', isInitialLoad);
-    console.log('========================');
-  };
-
-  // Sanity logs for debugging
-  useEffect(() => {
-    console.log('Auth user:', { uid: user?.uid, email: user?.email });
-  }, [user]);
 
   // 1) Keep email in sync with Firebase auth
   useEffect(() => {
     if (user?.email) {
       setProfileData(prev => ({ ...prev, email: user.email! }));
     }
-    // Debug user state when user changes
-    debugUserState();
-  }, [user?.email, user?.id]);
+  }, [user?.email]);
 
   // 2) Load once + watch live profile when the user id is ready
   useEffect(() => {
