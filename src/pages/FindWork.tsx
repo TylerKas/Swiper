@@ -10,6 +10,8 @@ import { EarningsDashboard } from "@/components/EarningsDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { loadProfile, ProfileData } from "@/firebase";
 import { getOpenJobs } from "@/utils/jobs";
+import { getDoc, doc } from "firebase/firestore";
+import { db } from "@/firebase";
 
 interface Task {
   id: string;
@@ -23,6 +25,19 @@ interface Task {
   timeEstimate: string;
   category: string;
   urgency: string;
+}
+
+function distanceMiles(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const toRad = (x: number) => (x * Math.PI) / 180;
+  const R = 3958.7613; // miles
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
 }
 
 const FindWork = () => {
@@ -90,39 +105,60 @@ const FindWork = () => {
     checkProfile();
   }, [uid, navigate, toast]);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const rows = await getOpenJobs(25); // from utils/jobs.ts
-        // Adapt Firestore Job → Task shape the card expects
-        const mapped: Task[] = rows.map(j => ({
+useEffect(() => {
+  const load = async () => {
+    try {
+      // 1) get worker location from their profile
+      let workerLoc: { lat: number; lng: number } | null = null;
+      if (uid) {
+        const prof = await getDoc(doc(db, "profiles", uid));
+        const p = prof.exists() ? (prof.data() as any) : null;
+        if (p?.location?.lat != null && p?.location?.lng != null) {
+          workerLoc = { lat: p.location.lat, lng: p.location.lng };
+        }
+      }
+
+      // 2) fetch jobs
+      const rows = await getOpenJobs(25);
+
+      // 3) map → Task and compute distance text when possible
+      const mapped: Task[] = rows.map((j) => {
+        let locationText = "Nearby";
+        if (workerLoc && j.posterLocation?.lat != null && j.posterLocation?.lng != null) {
+          const miles = distanceMiles(workerLoc, j.posterLocation);
+          locationText = `${miles.toFixed(1)} miles away`;
+        }
+        return {
           id: j.id,
           title: j.title,
           description: j.description,
-          clientName: "Client",         // placeholder until you store/display poster’s name
-          clientAge: undefined,         // optional
-          client_id: j.userId,          // owner of the job
-          location: "Nearby",           // placeholder (no location in Job yet)
-          payment: j.pay,               // Firestore field is 'pay'
-          timeEstimate: j.estimatedTime,// Firestore field is 'estimatedTime'
+          clientName: "Client",
+          clientAge: undefined,
+          client_id: j.userId,
+          location: locationText,           
+          payment: j.pay,
+          timeEstimate: j.estimatedTime,
           category: j.category,
           urgency: j.urgency || "Flexible",
-        }));
-        setTasks(mapped);
-      } catch (err) {
-        console.error("Error loading jobs:", err);
-        toast({
-          title: "Error loading jobs",
-          description: "Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-  
-    load();
-  }, []);
+        };
+      });
+
+      setTasks(mapped);
+    } catch (err) {
+      console.error("Error loading jobs:", err);
+      toast({
+        title: "Error loading jobs",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  load();
+}, [uid, toast]);
+
   
 
   const currentTask = tasks[currentTaskIndex];

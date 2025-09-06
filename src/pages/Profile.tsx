@@ -597,9 +597,18 @@ const Profile = () => {
                     ac.addListener("place_changed", () => {
                       const place = ac.getPlace();
                       const formatted = place?.formatted_address || "";
+                      //creates latitude and longitude
+                      const loc = place?.geometry?.location;
                       // set both the draft (what shows in the box) and the persisted profile value
                       setAddressDraft(formatted);
                       handleInputChange("address", formatted);
+                      if (loc && uid) {
+                        const lat = loc.lat();
+                        const lng = loc.lng();
+                      
+                        saveProfile(
+                          { address: formatted, location: { lat, lng } }, uid).catch(console.error);
+                      }
                     });
                   }
                 }}

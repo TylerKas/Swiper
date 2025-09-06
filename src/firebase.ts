@@ -69,6 +69,7 @@ export interface ProfileData {
   miles_radius?: number;
   avatar_url?: string;
   updated_at?: any;
+  location?: { lat: number; lng: number };
 }
 
 // Reference to the current user's profile document
