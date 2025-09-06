@@ -1,4 +1,4 @@
-import { addDoc, collection, serverTimestamp, query, where, orderBy, limit, getDocs } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, query, where, orderBy, limit, getDocs, getDoc, doc } from "firebase/firestore";
 import { auth, db } from "@/firebase";
 
 export type Job = {
@@ -21,17 +21,22 @@ export type Job = {
       };
     status: "open" | "closed";
     createdAt?: any;
+    posterLocation?: { lat: number; lng: number; address?: string } | null;
 };
 
-export async function createJob(job: Omit<Job, "userId" | "status" | "createdAt">){
+export async function createJob(job: Omit<Job, "userId" | "status" | "createdAt" | "posterLocation">) {
     const user = auth.currentUser;
     if (!user) throw new Error("Not signed in");
+
+    const profSnap = await getDoc(doc(db, "profiles", user.uid));
+    const posterLocation = profSnap.exists() ? (profSnap.data() as any).location ?? null : null;
 
     const payload: Job = {
         ...job,
         userId: user.uid,
         status: "open",
         createdAt: serverTimestamp(),
+        posterLocation,
     };
     //ref is a reference to the firestore doct
     //addDoc creates a new document inside that collection
