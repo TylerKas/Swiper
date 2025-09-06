@@ -11,7 +11,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import React, { useEffect, useRef, useState } from 'react';
 import { loadProfile, watchProfile, saveProfile, ProfileData, storage } from '@/firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { debugFirebaseConnection, debugProfileSave } from '@/utils/firebase-debug';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -85,8 +84,6 @@ const Profile = () => {
   useEffect(() => {
     if (!uid) return;
 
-    // Debug Firebase connection
-    debugFirebaseConnection();
 
     // initial one-shot load
     (async () => {
@@ -579,18 +576,21 @@ const Profile = () => {
                   if ((addressInputRef as any)._acAttached) return;
                   (addressInputRef as any)._acAttached = true;
               
-                  const ac = new google.maps.places.Autocomplete(el, {
-                    types: ["geocode"], // addresses only
-                    // componentRestrictions: { country: "us" },
-                  });
-              
-                  ac.addListener("place_changed", () => {
-                    const place = ac.getPlace();
-                    const formatted = place?.formatted_address || "";
-                    // set both the draft (what shows in the box) and the persisted profile value
-                    setAddressDraft(formatted);
-                    handleInputChange("address", formatted);
-                  });
+                  // Check if Google Maps is loaded
+                  if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+                    const ac = new google.maps.places.Autocomplete(el, {
+                      types: ["geocode"], // addresses only
+                      // componentRestrictions: { country: "us" },
+                    });
+                
+                    ac.addListener("place_changed", () => {
+                      const place = ac.getPlace();
+                      const formatted = place?.formatted_address || "";
+                      // set both the draft (what shows in the box) and the persisted profile value
+                      setAddressDraft(formatted);
+                      handleInputChange("address", formatted);
+                    });
+                  }
                 }}
                 value={addressDraft}
                 onChange={(e) => setAddressDraft(e.target.value)}  // typing shows live
@@ -625,13 +625,6 @@ const Profile = () => {
               className="w-full max-w-xs"
             >
               Back to Home
-            </Button>
-            <Button 
-              onClick={() => debugFirebaseConnection()}
-              variant="outline"
-              className="w-full max-w-xs"
-            >
-              Debug Firebase
             </Button>
           </div>
         </Card>
