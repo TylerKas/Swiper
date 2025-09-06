@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import React, { useEffect, useRef, useState } from 'react';
 import { loadProfile, watchProfile, saveProfile, ProfileData, storage } from '@/firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { debugFirebaseConnection, debugProfileSave } from '@/utils/firebase-debug';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -100,6 +101,9 @@ const Profile = () => {
   // 2) Load once + watch live profile when the user id is ready
   useEffect(() => {
     if (!uid) return;
+
+    // Debug Firebase connection
+    debugFirebaseConnection();
 
     // initial one-shot load
     (async () => {
@@ -631,13 +635,20 @@ const Profile = () => {
             </div>
           </div>
 
-          <div className="flex justify-center">
+          <div className="flex justify-center space-x-4">
             <Button 
               onClick={handleBackToHome}
               variant="outline"
               className="w-full max-w-xs"
             >
               Back to Home
+            </Button>
+            <Button 
+              onClick={() => debugFirebaseConnection()}
+              variant="outline"
+              className="w-full max-w-xs"
+            >
+              Debug Firebase
             </Button>
           </div>
         </Card>
