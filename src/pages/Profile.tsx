@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import React, { useEffect, useRef, useState } from 'react';
 import { loadProfile, watchProfile, saveProfile, ProfileData, storage } from '@/firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { debugFirebaseConnection, debugProfileSave } from '@/utils/firebase-debug';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -50,7 +51,10 @@ const Profile = () => {
     }
     
     try {
+      console.log('Saving profile data:', profileData);
+      await debugProfileSave(user.id, profileData);
       await saveProfile(profileData, user.id);
+      console.log('Profile saved successfully');
     } catch (error) {
       console.error('Error saving profile immediately:', error);
     }
@@ -67,10 +71,15 @@ const Profile = () => {
   useEffect(() => {
     if (!user?.id) return;
 
+    // Debug Firebase connection
+    debugFirebaseConnection();
+
     // initial one-shot load
     (async () => {
       try {
+        console.log('Loading profile for user:', user.id);
         const p = await loadProfile(user.id);
+        console.log('Loaded profile data:', p);
         if (p) {
           setProfileData(prev => ({ ...prev, ...p }));
           if (typeof p.address === 'string') setAddressDraft(p.address);
@@ -577,13 +586,20 @@ const Profile = () => {
             </div>
           </div>
 
-          <div className="flex justify-center">
+          <div className="flex justify-center space-x-4">
             <Button 
               onClick={handleBackToHome}
               variant="outline"
               className="w-full max-w-xs"
             >
               Back to Home
+            </Button>
+            <Button 
+              onClick={() => debugFirebaseConnection()}
+              variant="outline"
+              className="w-full max-w-xs"
+            >
+              Debug Firebase
             </Button>
           </div>
         </Card>
