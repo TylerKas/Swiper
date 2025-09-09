@@ -81,11 +81,15 @@ const userProfileRef = (uid: string) => {
 // Load profile once (returns null if none saved yet)
 export async function loadProfile(uid: string): Promise<ProfileData | null> {
   try {
+    console.log('loadProfile called for UID:', uid);
     const snap = await getDoc(userProfileRef(uid));
+    console.log('Profile document exists:', snap.exists());
     if (!snap.exists()) {
+      console.log('No profile document found for UID:', uid);
       return null;
     }
     const data = snap.data() as ProfileData;
+    console.log('Profile data loaded:', data);
     return data;
   } catch (error) {
     console.error('Error loading profile:', error);
@@ -127,6 +131,7 @@ export async function saveProfile(partial: ProfileData, uid: string) {
     );
     
     console.log('Cleaned data to save:', cleanData);
+    console.log('Location data in cleanData:', cleanData.location);
     
     // Ensure we have data to save
     if (Object.keys(cleanData).length === 0) {

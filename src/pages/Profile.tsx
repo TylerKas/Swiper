@@ -588,27 +588,52 @@ const Profile = () => {
                   (addressInputRef as any)._acAttached = true;
               
                   // Check if Google Maps is loaded
+                  console.log('Google Maps check:', {
+                    google: typeof google !== 'undefined',
+                    maps: typeof google !== 'undefined' && !!google.maps,
+                    places: typeof google !== 'undefined' && !!google.maps?.places
+                  });
+                  
                   if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+                    console.log('Creating Google Maps Autocomplete...');
                     const ac = new google.maps.places.Autocomplete(el, {
                       types: ["geocode"], // addresses only
                       // componentRestrictions: { country: "us" },
                     });
+                    console.log('Autocomplete created successfully');
+                    
+                    // Test if autocomplete is working
+                    console.log('Autocomplete bounds:', ac.getBounds());
                 
                     ac.addListener("place_changed", () => {
+                      console.log('PLACE_CHANGED EVENT FIRED!');
                       const place = ac.getPlace();
+                      console.log('Google Maps place selected:', place);
                       const formatted = place?.formatted_address || "";
+                      console.log('Formatted address:', formatted);
                       //creates latitude and longitude
                       const loc = place?.geometry?.location;
+                      console.log('Location object:', loc);
                       // set both the draft (what shows in the box) and the persisted profile value
                       setAddressDraft(formatted);
                       handleInputChange("address", formatted);
                       if (loc && uid) {
                         const lat = loc.lat();
                         const lng = loc.lng();
+                        console.log('Coordinates to save:', { lat, lng });
                       
                         saveProfile(
                           { address: formatted, location: { lat, lng } }, uid).catch(console.error);
+                      } else {
+                        console.log('No location or UID available');
                       }
+                    });
+                  } else {
+                    console.log('Google Maps not available - autocomplete will not work');
+                    console.log('Available:', {
+                      google: typeof google,
+                      maps: typeof google !== 'undefined' ? typeof google.maps : 'N/A',
+                      places: typeof google !== 'undefined' ? typeof google.maps?.places : 'N/A'
                     });
                   }
                 }}
@@ -639,6 +664,56 @@ const Profile = () => {
           </div>
 
           <div className="flex justify-center space-x-4">
+            <Button 
+              onClick={() => {
+                const currentAddress = addressDraft.trim();
+                if (!currentAddress) {
+                  toast({ title: "No address", description: "Please enter an address first", variant: "destructive" });
+                  return;
+                }
+                
+                if (!uid) {
+                  toast({ title: "Error", description: "Not logged in", variant: "destructive" });
+                  return;
+                }
+                
+                // Get REAL coordinates from Google Maps
+                const geocoder = new google.maps.Geocoder();
+                geocoder.geocode({ address: currentAddress }, async (results, status) => {
+                  if (status === 'OK' && results && results[0]) {
+                    const location = results[0].geometry.location;
+                    const lat = location.lat();
+                    const lng = location.lng();
+                    
+                    // Save REAL coordinates to Firebase
+                    try {
+                      const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+                      const { db } = await import('@/firebase');
+                      
+                      const profileRef = doc(db, 'profiles', uid);
+                      await setDoc(profileRef, {
+                        address: currentAddress,
+                        location: { lat, lng },
+                        updated_at: serverTimestamp()
+                      }, { merge: true });
+                      
+                      // Update local state to match what was saved
+                      setProfileData(prev => ({ ...prev, address: currentAddress, location: { lat, lng } }));
+                      setAddressDraft(currentAddress);
+                      
+                      toast({ title: "Address Updated", description: `Real coordinates: ${lat.toFixed(4)}, ${lng.toFixed(4)}` });
+                    } catch (error) {
+                      toast({ title: "Save Failed", description: error.message, variant: "destructive" });
+                    }
+                  } else {
+                    toast({ title: "Geocoding Failed", description: `Could not find coordinates for "${currentAddress}"`, variant: "destructive" });
+                  }
+                });
+              }}
+              className="w-full max-w-xs bg-blue-500 hover:bg-blue-600 text-white"
+            >
+              Update Address
+            </Button>
             <Button 
               onClick={handleBackToHome}
               variant="outline"
