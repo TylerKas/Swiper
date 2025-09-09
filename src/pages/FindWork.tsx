@@ -25,9 +25,29 @@ interface Task {
   timeEstimate: string;
   category: string;
   urgency: string;
+  requirements?: {
+    mustHaveCar?: boolean;
+    comfortableWithPets?: boolean;
+    hasOwnTools?: boolean;
+    expComputers?: boolean;
+    canLiftHeavy?: boolean;
+    expCleaning?: boolean;
+  };
 }
 
 function distanceMiles(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  console.log('Distance function inputs:', { a, b });
+  
+  // Test with known coordinates (NYC to LA should be ~2445 miles)
+  const testA = { lat: 40.7128, lng: -74.0060 }; // NYC
+  const testB = { lat: 34.0522, lng: -118.2437 }; // LA
+  const testDistance = calculateHaversine(testA, testB);
+  console.log('Test distance NYC to LA:', testDistance, 'miles (should be ~2445)');
+  
+  return calculateHaversine(a, b);
+}
+
+function calculateHaversine(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   const toRad = (x: number) => (x * Math.PI) / 180;
   const R = 3958.7613; // miles
   const dLat = toRad(b.lat - a.lat);
@@ -37,7 +57,9 @@ function distanceMiles(a: { lat: number; lng: number }, b: { lat: number; lng: n
   const h =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
+  const result = 2 * R * Math.asin(Math.sqrt(h));
+  console.log('Haversine calculation:', { dLat, dLng, lat1, lat2, h, result });
+  return result;
 }
 
 const FindWork = () => {
@@ -120,19 +142,89 @@ useEffect(() => {
 
       // 2) fetch jobs
       const rows = await getOpenJobs(25);
+      
+      // Filter out current user's own jobs
+      const otherJobs = rows.filter(job => job.userId !== uid);
+      console.log('Total jobs fetched:', rows.length);
+      console.log('Jobs from other users:', otherJobs.length);
+      console.log('Current user ID:', uid);
+      console.log('All job user IDs:', rows.map(job => job.userId));
+      console.log('Filtered job user IDs:', otherJobs.map(job => job.userId));
 
       // 3) map → Task and compute distance text when possible
-      const mapped: Task[] = rows.map((j) => {
-        let locationText = "Nearby";
-        if (workerLoc && j.posterLocation?.lat != null && j.posterLocation?.lng != null) {
-          const miles = distanceMiles(workerLoc, j.posterLocation);
-          locationText = `${miles.toFixed(1)} miles away`;
+      const mapped: Task[] = await Promise.all(otherJobs.map(async (j) => {
+        // Load poster's profile to get their first name and location
+        let clientName = "Client";
+        let posterLocation = j.posterLocation; // Default to job's posterLocation
+        
+        try {
+          console.log('=== NAME LOADING ===');
+          console.log('Loading profile for user ID:', j.userId);
+          const posterProfile = await loadProfile(j.userId);
+          console.log('Loaded profile:', posterProfile);
+          
+          if (posterProfile?.full_name) {
+            // Extract first name from full name
+            const firstName = posterProfile.full_name.split(' ')[0];
+            console.log('Full name:', posterProfile.full_name);
+            console.log('First name:', firstName);
+            clientName = firstName;
+          } else {
+            console.log('No full_name found in profile');
+          }
+          
+          // Get poster's location from their profile instead of job data
+          console.log('Poster profile location field:', posterProfile?.location);
+          console.log('Poster profile location lat:', posterProfile?.location?.lat);
+          console.log('Poster profile location lng:', posterProfile?.location?.lng);
+          
+          if (posterProfile?.location?.lat != null && posterProfile?.location?.lng != null) {
+            posterLocation = { lat: posterProfile.location.lat, lng: posterProfile.location.lng };
+            console.log('Poster location from profile:', posterLocation);
+          } else {
+            console.log('No location found in poster profile, using job posterLocation:', j.posterLocation);
+          }
+          
+          console.log('Final client name:', clientName);
+          console.log('==================');
+        } catch (error) {
+          console.log('Could not load poster profile:', error);
         }
+        
+        // Now calculate distance using the correct poster location
+        let locationText = "Nearby";
+        if (workerLoc && posterLocation?.lat != null && posterLocation?.lng != null) {
+          console.log('=== DISTANCE CALCULATION ===');
+          console.log('Job title:', j.title);
+          console.log('Job poster ID:', j.userId);
+          console.log('Current worker ID:', uid);
+          console.log('Are these the same user?', j.userId === uid);
+          console.log('Worker location:', workerLoc);
+          console.log('Poster location:', posterLocation);
+          console.log('Worker lat/lng:', workerLoc.lat, workerLoc.lng);
+          console.log('Poster lat/lng:', posterLocation.lat, posterLocation.lng);
+          console.log('Worker coordinates:', JSON.stringify(workerLoc));
+          console.log('Poster coordinates:', JSON.stringify(posterLocation));
+          
+          // Check if coordinates are actually different
+          const sameLocation = workerLoc.lat === posterLocation.lat && workerLoc.lng === posterLocation.lng;
+          console.log('Are coordinates identical?', sameLocation);
+          console.log('Latitude difference:', Math.abs(workerLoc.lat - posterLocation.lat));
+          console.log('Longitude difference:', Math.abs(workerLoc.lng - posterLocation.lng));
+          
+          const miles = distanceMiles(workerLoc, posterLocation);
+          console.log('Calculated miles:', miles);
+          console.log('============================');
+          locationText = `${miles.toFixed(1)} miles away`;
+        } else {
+          console.log('Missing location data - Worker:', workerLoc, 'Poster:', posterLocation);
+        }
+        
         return {
           id: j.id,
           title: j.title,
           description: j.description,
-          clientName: "Client",
+          clientName,
           clientAge: undefined,
           client_id: j.userId,
           location: locationText,           
@@ -140,8 +232,9 @@ useEffect(() => {
           timeEstimate: j.estimatedTime,
           category: j.category,
           urgency: j.urgency || "Flexible",
+          requirements: j.requirements,
         };
-      });
+      }));
 
       setTasks(mapped);
     } catch (err) {
@@ -228,19 +321,18 @@ useEffect(() => {
       {/* Header */}
       <header className="bg-white border-b">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-center relative">
             <Button 
               variant="ghost" 
               size="icon"
               onClick={() => navigate('/')}
-              className="hover:bg-gray-100"
+              className="hover:bg-gray-100 absolute left-0"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <h1 className="text-xl font-semibold text-gray-900">
               Find Work
             </h1>
-            <div className="w-10"></div>
           </div>
         </div>
       </header>
@@ -252,23 +344,26 @@ useEffect(() => {
             <div className="bg-gradient-to-br from-orange-400 to-orange-500 rounded-3xl shadow-xl overflow-hidden text-white relative">
               {/* Task Header */}
               <div className="p-6">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="bg-white/20 backdrop-blur rounded-full px-3 py-1 text-sm font-medium">
+                <div className="flex justify-center gap-3 mb-6">
+                  <div className="bg-white/20 backdrop-blur rounded-full px-4 py-2 text-sm font-medium text-center">
                     {currentTask.category}
                   </div>
-                  <div className="bg-white/20 backdrop-blur rounded-full px-3 py-1 text-sm font-medium">
+                  <div className="bg-white/20 backdrop-blur rounded-full px-4 py-2 text-sm font-medium text-center">
                     {currentTask.urgency}
                   </div>
                 </div>
                 
-                <h2 className="text-3xl font-bold mb-2 uppercase tracking-wide">{currentTask.title}</h2>
-                <p className="text-lg font-medium uppercase tracking-wide opacity-90">{currentTask.clientName}</p>
-                <p className="text-sm opacity-75 mt-6">{currentTask.description}</p>
+                <div className="text-center mb-6">
+                  <h2 className="text-3xl font-bold mb-2 uppercase tracking-wide">{currentTask.title}</h2>
+                  <p className="text-lg font-medium uppercase tracking-wide opacity-90">{currentTask.clientName}</p>
+                </div>
+                
+                <p className="text-sm opacity-75 leading-relaxed text-center mb-6">{currentTask.description}</p>
               </div>
 
               {/* Task Details */}
               <div className="px-6 pb-6">
-                <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center justify-center gap-8 mb-6">
                   <div className="flex items-center space-x-2">
                     <MapPin className="h-4 w-4 opacity-80" />
                     <span className="text-sm">{currentTask.location}</span>
@@ -279,8 +374,49 @@ useEffect(() => {
                   </div>
                 </div>
 
+                {/* Special Requirements */}
+                {currentTask.requirements && Object.values(currentTask.requirements).some(Boolean) && (
+                  <div className="mb-6">
+                    <div className="text-center mb-3">
+                      <span className="text-sm font-medium opacity-90">Requirements</span>
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-2 max-w-xs mx-auto">
+                      {currentTask.requirements.mustHaveCar && (
+                        <div className="bg-white/15 backdrop-blur rounded-lg px-3 py-2 text-xs text-center flex-shrink-0">
+                          Must have car
+                        </div>
+                      )}
+                      {currentTask.requirements.comfortableWithPets && (
+                        <div className="bg-white/15 backdrop-blur rounded-lg px-3 py-2 text-xs text-center flex-shrink-0">
+                          Pet friendly
+                        </div>
+                      )}
+                      {currentTask.requirements.hasOwnTools && (
+                        <div className="bg-white/15 backdrop-blur rounded-lg px-3 py-2 text-xs text-center flex-shrink-0">
+                          Own tools
+                        </div>
+                      )}
+                      {currentTask.requirements.expComputers && (
+                        <div className="bg-white/15 backdrop-blur rounded-lg px-3 py-2 text-xs text-center flex-shrink-0">
+                          Tech experience
+                        </div>
+                      )}
+                      {currentTask.requirements.canLiftHeavy && (
+                        <div className="bg-white/15 backdrop-blur rounded-lg px-3 py-2 text-xs text-center flex-shrink-0">
+                          Heavy lifting
+                        </div>
+                      )}
+                      {currentTask.requirements.expCleaning && (
+                        <div className="bg-white/15 backdrop-blur rounded-lg px-3 py-2 text-xs text-center flex-shrink-0">
+                          Cleaning experience
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Payment Badge */}
-                <div className="bg-white/20 backdrop-blur rounded-2xl p-4 text-center mb-8">
+                <div className="bg-white/20 backdrop-blur rounded-2xl p-4 text-center">
                   <span className="text-2xl font-bold">${currentTask.payment}</span>
                 </div>
               </div>
