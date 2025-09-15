@@ -9,6 +9,7 @@ import PostJob from "./pages/PostJob";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Profile from "./pages/Profile";
+import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
@@ -21,6 +22,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/find-work" element={<FindWork />} />
           <Route path="/post-job" element={<PostJob />} />
           <Route path="/profile" element={<Profile />} />

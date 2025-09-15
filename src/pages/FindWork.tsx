@@ -10,7 +10,7 @@ import { EarningsDashboard } from "@/components/EarningsDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 import { loadProfile, ProfileData } from "@/firebase";
 import { getOpenJobs } from "@/utils/jobs";
-import { getDoc, doc } from "firebase/firestore";
+import { getDoc, doc, addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/firebase";
 
 interface Task {
@@ -25,29 +25,9 @@ interface Task {
   timeEstimate: string;
   category: string;
   urgency: string;
-  requirements?: {
-    mustHaveCar?: boolean;
-    comfortableWithPets?: boolean;
-    hasOwnTools?: boolean;
-    expComputers?: boolean;
-    canLiftHeavy?: boolean;
-    expCleaning?: boolean;
-  };
 }
 
 function distanceMiles(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
-  console.log('Distance function inputs:', { a, b });
-  
-  // Test with known coordinates (NYC to LA should be ~2445 miles)
-  const testA = { lat: 40.7128, lng: -74.0060 }; // NYC
-  const testB = { lat: 34.0522, lng: -118.2437 }; // LA
-  const testDistance = calculateHaversine(testA, testB);
-  console.log('Test distance NYC to LA:', testDistance, 'miles (should be ~2445)');
-  
-  return calculateHaversine(a, b);
-}
-
-function calculateHaversine(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   const toRad = (x: number) => (x * Math.PI) / 180;
   const R = 3958.7613; // miles
   const dLat = toRad(b.lat - a.lat);
@@ -57,9 +37,7 @@ function calculateHaversine(a: { lat: number; lng: number }, b: { lat: number; l
   const h =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  const result = 2 * R * Math.asin(Math.sqrt(h));
-  console.log('Haversine calculation:', { dLat, dLng, lat1, lat2, h, result });
-  return result;
+  return 2 * R * Math.asin(Math.sqrt(h));
 }
 
 const FindWork = () => {
@@ -127,132 +105,88 @@ const FindWork = () => {
     checkProfile();
   }, [uid, navigate, toast]);
 
-useEffect(() => {
-  const load = async () => {
-    try {
-      // 1) get worker location from their profile
-      let workerLoc: { lat: number; lng: number } | null = null;
-      if (uid) {
-        const prof = await getDoc(doc(db, "profiles", uid));
-        const p = prof.exists() ? (prof.data() as any) : null;
-        if (p?.location?.lat != null && p?.location?.lng != null) {
-          workerLoc = { lat: p.location.lat, lng: p.location.lng };
-        }
-      }
-
-      // 2) fetch jobs
-      const rows = await getOpenJobs(25);
-      
-      // Filter out current user's own jobs
-      const otherJobs = rows.filter(job => job.userId !== uid);
-      console.log('Total jobs fetched:', rows.length);
-      console.log('Jobs from other users:', otherJobs.length);
-      console.log('Current user ID:', uid);
-      console.log('All job user IDs:', rows.map(job => job.userId));
-      console.log('Filtered job user IDs:', otherJobs.map(job => job.userId));
-
-      // 3) map → Task and compute distance text when possible
-      const mapped: Task[] = await Promise.all(otherJobs.map(async (j) => {
-        // Load poster's profile to get their first name and location
-        let clientName = "Client";
-        let posterLocation = j.posterLocation; // Default to job's posterLocation
-        
-        try {
-          console.log('=== NAME LOADING ===');
-          console.log('Loading profile for user ID:', j.userId);
-          const posterProfile = await loadProfile(j.userId);
-          console.log('Loaded profile:', posterProfile);
-          
-          if (posterProfile?.full_name) {
-            // Extract first name from full name
-            const firstName = posterProfile.full_name.split(' ')[0];
-            console.log('Full name:', posterProfile.full_name);
-            console.log('First name:', firstName);
-            clientName = firstName;
-          } else {
-            console.log('No full_name found in profile');
+  useEffect(() => {
+    let alive = true;
+  
+    const load = async () => {
+      try {
+        // 1) worker location from profile
+        let workerLoc: { lat: number; lng: number } | null = null;
+        if (uid) {
+          const prof = await getDoc(doc(db, "profiles", uid));
+          const p = prof.exists() ? (prof.data() as any) : null;
+          if (p?.location?.lat != null && p?.location?.lng != null) {
+            workerLoc = { lat: p.location.lat, lng: p.location.lng };
           }
-          
-          // Get poster's location from their profile instead of job data
-          console.log('Poster profile location field:', posterProfile?.location);
-          console.log('Poster profile location lat:', posterProfile?.location?.lat);
-          console.log('Poster profile location lng:', posterProfile?.location?.lng);
-          
-          if (posterProfile?.location?.lat != null && posterProfile?.location?.lng != null) {
-            posterLocation = { lat: posterProfile.location.lat, lng: posterProfile.location.lng };
-            console.log('Poster location from profile:', posterLocation);
-          } else {
-            console.log('No location found in poster profile, using job posterLocation:', j.posterLocation);
-          }
-          
-          console.log('Final client name:', clientName);
-          console.log('==================');
-        } catch (error) {
-          console.log('Could not load poster profile:', error);
         }
-        
-        // Now calculate distance using the correct poster location
-        let locationText = "Nearby";
-        if (workerLoc && posterLocation?.lat != null && posterLocation?.lng != null) {
-          console.log('=== DISTANCE CALCULATION ===');
-          console.log('Job title:', j.title);
-          console.log('Job poster ID:', j.userId);
-          console.log('Current worker ID:', uid);
-          console.log('Are these the same user?', j.userId === uid);
-          console.log('Worker location:', workerLoc);
-          console.log('Poster location:', posterLocation);
-          console.log('Worker lat/lng:', workerLoc.lat, workerLoc.lng);
-          console.log('Poster lat/lng:', posterLocation.lat, posterLocation.lng);
-          console.log('Worker coordinates:', JSON.stringify(workerLoc));
-          console.log('Poster coordinates:', JSON.stringify(posterLocation));
-          
-          // Check if coordinates are actually different
-          const sameLocation = workerLoc.lat === posterLocation.lat && workerLoc.lng === posterLocation.lng;
-          console.log('Are coordinates identical?', sameLocation);
-          console.log('Latitude difference:', Math.abs(workerLoc.lat - posterLocation.lat));
-          console.log('Longitude difference:', Math.abs(workerLoc.lng - posterLocation.lng));
-          
-          const miles = distanceMiles(workerLoc, posterLocation);
-          console.log('Calculated miles:', miles);
-          console.log('============================');
-          locationText = `${miles.toFixed(1)} miles away`;
-        } else {
-          console.log('Missing location data - Worker:', workerLoc, 'Poster:', posterLocation);
-        }
-        
-        return {
+  
+        // 2) worker radius (fallback 10)
+        const radiusMiles =
+          typeof profileData?.miles_radius === "number" ? profileData.miles_radius : 10;
+  
+        // 3) fetch jobs
+        let rows = await getOpenJobs(25);
+  
+        // optional: hide my own postings
+        if (uid) rows = rows.filter(j => j.userId !== uid);
+  
+        // 4) compute distance, filter by radius
+        const filtered = rows
+          .map((j) => {
+            let miles: number | null = null;
+            if (workerLoc && j.posterLocation?.lat != null && j.posterLocation?.lng != null) {
+              miles = distanceMiles(workerLoc, j.posterLocation);
+            }
+            return { j, miles };
+          })
+          .filter((x) => x.miles === null || x.miles <= radiusMiles);
+
+        // 5) batch load poster profiles to get names
+        const posterIds = Array.from(new Set(filtered.map(x => x.j.userId)));
+        const profiles = await Promise.all(
+          posterIds.map(async (pid) => {
+            try {
+              const prof = await loadProfile(pid);
+              return { pid, name: (prof?.full_name || "").split(" ")[0] || "Client" };
+            } catch {
+              return { pid, name: "Client" };
+            }
+          })
+        );
+        const nameMap = new Map(profiles.map(p => [p.pid, p.name]));
+
+        // 6) map to Task[]
+        const mapped: Task[] = filtered.map(({ j, miles }) => ({
           id: j.id,
           title: j.title,
           description: j.description,
-          clientName,
+          clientName: nameMap.get(j.userId) || "Client",
           clientAge: undefined,
           client_id: j.userId,
-          location: locationText,           
+          location: miles === null ? "Nearby" : `${miles.toFixed(1)} miles away`,
           payment: j.pay,
           timeEstimate: j.estimatedTime,
           category: j.category,
           urgency: j.urgency || "Flexible",
-          requirements: j.requirements,
-        };
-      }));
+        }));
 
-      setTasks(mapped);
-    } catch (err) {
-      console.error("Error loading jobs:", err);
-      toast({
-        title: "Error loading jobs",
-        description: "Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+        setTasks(mapped);
 
-  load();
-}, [uid, toast]);
-
+      } catch (err) {
+        console.error("Error loading jobs:", err);
+        toast({
+          title: "Error loading jobs",
+          description: "Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        if (alive) setLoading(false);
+      }
+    };
   
+    load();
+    return () => { alive = false; };
+  }, [uid, toast, profileData?.miles_radius]);
 
   const currentTask = tasks[currentTaskIndex];
 
@@ -276,9 +210,32 @@ useEffect(() => {
   };
 
   const createMatch = async () => {
-    if (!currentTask) return;
+    if (!currentTask || !uid) return;
 
     try {
+      // Create a match record in Firestore
+      const matchData = {
+        workerId: uid,
+        clientId: currentTask.client_id,
+        taskId: currentTask.id,
+        status: 'pending', // pending means worker hearted, waiting for client acceptance
+        createdAt: serverTimestamp(),
+        task: {
+          id: currentTask.id,
+          title: currentTask.title,
+          payment: currentTask.payment,
+          location: currentTask.location,
+          time_estimate: currentTask.timeEstimate,
+        },
+        other_user: {
+          id: currentTask.client_id,
+          full_name: currentTask.clientName,
+          user_type: 'client' as const,
+        }
+      };
+
+      await addDoc(collection(db, "matches"), matchData);
+
       toast({
         title: "Match! 💚",
         description: `You've been matched with ${currentTask?.clientName}. They will be notified!`,
@@ -321,18 +278,19 @@ useEffect(() => {
       {/* Header */}
       <header className="bg-white border-b">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-center relative">
+          <div className="flex items-center justify-between">
             <Button 
               variant="ghost" 
               size="icon"
               onClick={() => navigate('/')}
-              className="hover:bg-gray-100 absolute left-0"
+              className="hover:bg-gray-100"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <h1 className="text-xl font-semibold text-gray-900">
               Find Work
             </h1>
+            <div className="w-10"></div>
           </div>
         </div>
       </header>
@@ -343,27 +301,24 @@ useEffect(() => {
           <div className="w-full max-w-sm">
             <div className="bg-gradient-to-br from-orange-400 to-orange-500 rounded-3xl shadow-xl overflow-hidden text-white relative">
               {/* Task Header */}
-              <div className="p-6">
-                <div className="flex justify-center gap-3 mb-6">
-                  <div className="bg-white/20 backdrop-blur rounded-full px-4 py-2 text-sm font-medium text-center">
+              <div className="p-6 text-center">
+                <div className="flex items-center justify-center gap-2 mb-6">
+                  <div className="bg-white/20 backdrop-blur rounded-full px-3 py-1 text-sm font-medium">
                     {currentTask.category}
                   </div>
-                  <div className="bg-white/20 backdrop-blur rounded-full px-4 py-2 text-sm font-medium text-center">
+                  <div className="bg-white/20 backdrop-blur rounded-full px-3 py-1 text-sm font-medium">
                     {currentTask.urgency}
                   </div>
                 </div>
                 
-                <div className="text-center mb-6">
-                  <h2 className="text-3xl font-bold mb-2 uppercase tracking-wide">{currentTask.title}</h2>
-                  <p className="text-lg font-medium uppercase tracking-wide opacity-90">{currentTask.clientName}</p>
-                </div>
-                
-                <p className="text-sm opacity-75 leading-relaxed text-center mb-6">{currentTask.description}</p>
+                <h2 className="text-3xl font-bold mb-2 uppercase tracking-wide">{currentTask.title}</h2>
+                <p className="text-lg font-medium uppercase tracking-wide opacity-90">{currentTask.clientName}</p>
+                <p className="text-sm opacity-75 mt-6">{currentTask.description}</p>
               </div>
 
               {/* Task Details */}
-              <div className="px-6 pb-6">
-                <div className="flex items-center justify-center gap-8 mb-6">
+              <div className="px-6 pb-6 text-center">
+                <div className="flex items-center justify-center gap-6 mb-8">
                   <div className="flex items-center space-x-2">
                     <MapPin className="h-4 w-4 opacity-80" />
                     <span className="text-sm">{currentTask.location}</span>
@@ -374,49 +329,8 @@ useEffect(() => {
                   </div>
                 </div>
 
-                {/* Special Requirements */}
-                {currentTask.requirements && Object.values(currentTask.requirements).some(Boolean) && (
-                  <div className="mb-6">
-                    <div className="text-center mb-3">
-                      <span className="text-sm font-medium opacity-90">Requirements</span>
-                    </div>
-                    <div className="flex flex-wrap justify-center gap-2 max-w-xs mx-auto">
-                      {currentTask.requirements.mustHaveCar && (
-                        <div className="bg-white/15 backdrop-blur rounded-lg px-3 py-2 text-xs text-center flex-shrink-0">
-                          Must have car
-                        </div>
-                      )}
-                      {currentTask.requirements.comfortableWithPets && (
-                        <div className="bg-white/15 backdrop-blur rounded-lg px-3 py-2 text-xs text-center flex-shrink-0">
-                          Pet friendly
-                        </div>
-                      )}
-                      {currentTask.requirements.hasOwnTools && (
-                        <div className="bg-white/15 backdrop-blur rounded-lg px-3 py-2 text-xs text-center flex-shrink-0">
-                          Own tools
-                        </div>
-                      )}
-                      {currentTask.requirements.expComputers && (
-                        <div className="bg-white/15 backdrop-blur rounded-lg px-3 py-2 text-xs text-center flex-shrink-0">
-                          Tech experience
-                        </div>
-                      )}
-                      {currentTask.requirements.canLiftHeavy && (
-                        <div className="bg-white/15 backdrop-blur rounded-lg px-3 py-2 text-xs text-center flex-shrink-0">
-                          Heavy lifting
-                        </div>
-                      )}
-                      {currentTask.requirements.expCleaning && (
-                        <div className="bg-white/15 backdrop-blur rounded-lg px-3 py-2 text-xs text-center flex-shrink-0">
-                          Cleaning experience
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 {/* Payment Badge */}
-                <div className="bg-white/20 backdrop-blur rounded-2xl p-4 text-center">
+                <div className="bg-white/20 backdrop-blur rounded-2xl p-4 text-center mb-8">
                   <span className="text-2xl font-bold">${currentTask.payment}</span>
                 </div>
               </div>

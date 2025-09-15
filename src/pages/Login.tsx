@@ -38,7 +38,6 @@ const Login = () => {
       });
       navigate('/');
     } catch (error: any) {
-      console.error("Login error:", error);
       toast({
         title: 'Error',
         description: error.message || 'Something went wrong. Please try again.',
@@ -59,7 +58,6 @@ const Login = () => {
       });
       navigate('/');
     } catch (error: any) {
-      console.error("Google sign-in error:", error);
       toast({
         title: 'Error',
         description: error.message || 'Something went wrong with Google sign in.',

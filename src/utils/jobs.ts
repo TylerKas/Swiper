@@ -30,7 +30,6 @@ export async function createJob(job: Omit<Job, "userId" | "status" | "createdAt"
 
     const profSnap = await getDoc(doc(db, "profiles", user.uid));
     const posterLocation = profSnap.exists() ? (profSnap.data() as any).location ?? null : null;
-    console.log('Saving job with poster location:', posterLocation);
 
     const payload: Job = {
         ...job,

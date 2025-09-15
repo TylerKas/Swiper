@@ -50,7 +50,6 @@ const RatingInterface = ({
 
       onComplete();
     } catch (error) {
-      console.error('Error submitting rating:', error);
       toast({
         title: "Error submitting rating",
         description: "Please try again.",
