@@ -59,7 +59,6 @@ const MessageInterface = ({
         description: "Your message has been delivered"
       });
     } catch (error) {
-      console.error('Error sending message:', error);
       toast({
         title: "Failed to send message",
         description: "Please try again",

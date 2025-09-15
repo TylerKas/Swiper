@@ -376,7 +376,7 @@ const Profile = () => {
               <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Heart className="h-8 w-8 text-white" />
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Join HelpMate</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Join Giggle</h1>
               <p className="text-gray-600">Create your profile to get started</p>
             </div>
             <Button 
@@ -588,52 +588,27 @@ const Profile = () => {
                   (addressInputRef as any)._acAttached = true;
               
                   // Check if Google Maps is loaded
-                  console.log('Google Maps check:', {
-                    google: typeof google !== 'undefined',
-                    maps: typeof google !== 'undefined' && !!google.maps,
-                    places: typeof google !== 'undefined' && !!google.maps?.places
-                  });
-                  
                   if (typeof google !== 'undefined' && google.maps && google.maps.places) {
-                    console.log('Creating Google Maps Autocomplete...');
                     const ac = new google.maps.places.Autocomplete(el, {
                       types: ["geocode"], // addresses only
                       // componentRestrictions: { country: "us" },
                     });
-                    console.log('Autocomplete created successfully');
-                    
-                    // Test if autocomplete is working
-                    console.log('Autocomplete bounds:', ac.getBounds());
                 
                     ac.addListener("place_changed", () => {
-                      console.log('PLACE_CHANGED EVENT FIRED!');
                       const place = ac.getPlace();
-                      console.log('Google Maps place selected:', place);
                       const formatted = place?.formatted_address || "";
-                      console.log('Formatted address:', formatted);
                       //creates latitude and longitude
                       const loc = place?.geometry?.location;
-                      console.log('Location object:', loc);
                       // set both the draft (what shows in the box) and the persisted profile value
                       setAddressDraft(formatted);
                       handleInputChange("address", formatted);
                       if (loc && uid) {
                         const lat = loc.lat();
                         const lng = loc.lng();
-                        console.log('Coordinates to save:', { lat, lng });
                       
                         saveProfile(
                           { address: formatted, location: { lat, lng } }, uid).catch(console.error);
-                      } else {
-                        console.log('No location or UID available');
                       }
-                    });
-                  } else {
-                    console.log('Google Maps not available - autocomplete will not work');
-                    console.log('Available:', {
-                      google: typeof google,
-                      maps: typeof google !== 'undefined' ? typeof google.maps : 'N/A',
-                      places: typeof google !== 'undefined' ? typeof google.maps?.places : 'N/A'
                     });
                   }
                 }}
@@ -647,7 +622,7 @@ const Profile = () => {
                     setAddressDraft("");
                   }
                 }}
-              />              
+              />
             </div>
 
             <div className="mb-8">
@@ -664,60 +639,67 @@ const Profile = () => {
           </div>
 
           <div className="flex justify-center space-x-4">
-            <Button 
-              onClick={() => {
-                const currentAddress = addressDraft.trim();
-                if (!currentAddress) {
-                  toast({ title: "No address", description: "Please enter an address first", variant: "destructive" });
-                  return;
-                }
+            <Button
+              type="button"
+              onClick={async () => {
+                if (!addressDraft.trim() || !uid) return;
                 
-                if (!uid) {
-                  toast({ title: "Error", description: "Not logged in", variant: "destructive" });
-                  return;
-                }
-                
-                // Get REAL coordinates from Google Maps
-                const geocoder = new google.maps.Geocoder();
-                geocoder.geocode({ address: currentAddress }, async (results, status) => {
-                  if (status === 'OK' && results && results[0]) {
-                    const location = results[0].geometry.location;
+                try {
+                  // Use Google Geocoding API to get coordinates
+                  const geocoder = new google.maps.Geocoder();
+                  const result = await new Promise<google.maps.GeocoderResult[]>((resolve, reject) => {
+                    geocoder.geocode({ address: addressDraft }, (results, status) => {
+                      if (status === 'OK' && results) {
+                        resolve(results);
+                      } else {
+                        reject(new Error(`Geocoding failed: ${status}`));
+                      }
+                    });
+                  });
+                  
+                  if (result.length > 0) {
+                    const location = result[0].geometry.location;
                     const lat = location.lat();
                     const lng = location.lng();
+                    const formattedAddress = result[0].formatted_address;
                     
-                    // Save REAL coordinates to Firebase
-                    try {
-                      const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
-                      const { db } = await import('@/firebase');
-                      
-                      const profileRef = doc(db, 'profiles', uid);
-                      await setDoc(profileRef, {
-                        address: currentAddress,
-                        location: { lat, lng },
-                        updated_at: serverTimestamp()
-                      }, { merge: true });
-                      
-                      // Update local state to match what was saved
-                      setProfileData(prev => ({ ...prev, address: currentAddress, location: { lat, lng } }));
-                      setAddressDraft(currentAddress);
-                      
-                      toast({ title: "Address Updated", description: `Real coordinates: ${lat.toFixed(4)}, ${lng.toFixed(4)}` });
-                    } catch (error) {
-                      toast({ title: "Save Failed", description: error.message, variant: "destructive" });
-                    }
-                  } else {
-                    toast({ title: "Geocoding Failed", description: `Could not find coordinates for "${currentAddress}"`, variant: "destructive" });
+                    // Update both address and coordinates
+                    setProfileData(prev => ({
+                      ...prev,
+                      address: formattedAddress,
+                      location: { lat, lng }
+                    }));
+                    setAddressDraft(formattedAddress);
+                    
+                    // Save to Firebase
+                    await saveProfile({
+                      address: formattedAddress,
+                      location: { lat, lng }
+                    }, uid);
+                    
+                    toast({
+                      title: "Address updated!",
+                      description: "Your location has been saved with coordinates.",
+                    });
                   }
-                });
+                } catch (error) {
+                  console.error('Geocoding error:', error);
+                  toast({
+                    title: "Error updating address",
+                    description: "Could not find coordinates for this address. Please try again.",
+                    variant: "destructive",
+                  });
+                }
               }}
-              className="w-full max-w-xs bg-blue-500 hover:bg-blue-600 text-white"
+              disabled={!addressDraft.trim()}
+              className="flex-1 max-w-xs"
             >
               Update Address
             </Button>
             <Button 
               onClick={handleBackToHome}
               variant="outline"
-              className="w-full max-w-xs"
+              className="flex-1 max-w-xs"
             >
               Back to Home
             </Button>

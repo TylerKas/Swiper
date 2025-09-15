@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, CheckCircle, Clock, DollarSign, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { db } from "@/firebase";
 import MessageInterface from "./MessageInterface";
 import RatingInterface from "./RatingInterface";
 
@@ -27,15 +30,68 @@ interface ActiveTask {
 
 interface ActiveTasksListProps {
   userType: 'worker' | 'client';
+  statusFilter?: 'pending' | 'active' | 'all';
 }
 
-const ActiveTasksList = ({ userType }: ActiveTasksListProps) => {
+const ActiveTasksList = ({ userType, statusFilter = 'all' }: ActiveTasksListProps) => {
   const [activeTasks, setActiveTasks] = useState<ActiveTask[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedTask, setSelectedTask] = useState<ActiveTask | null>(null);
   const [showMessages, setShowMessages] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Load matches from Firestore
+  useEffect(() => {
+    if (!user?.uid) {
+      console.log('ActiveTasksList: No user UID available');
+      return;
+    }
+
+    console.log(`ActiveTasksList: Loading matches for userType: ${userType}, uid: ${user.uid}`);
+    setLoading(true);
+    
+    // Query matches based on user type
+    const fieldName = userType === 'worker' ? 'workerId' : 'clientId';
+    const matchesQuery = query(
+      collection(db, "matches"),
+      where(fieldName, "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
+
+    console.log(`ActiveTasksList: Querying matches where ${fieldName} == ${user.uid}`);
+
+    const unsubscribe = onSnapshot(matchesQuery, (snapshot) => {
+      console.log(`ActiveTasksList: Received ${snapshot.docs.length} matches`);
+      let matches: ActiveTask[] = snapshot.docs.map(doc => {
+        const data = doc.data();
+        console.log('ActiveTasksList: Match data:', { id: doc.id, ...data });
+        return {
+          id: doc.id,
+          ...data
+        };
+      }) as ActiveTask[];
+      
+      // Filter by status if specified
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'pending') {
+          matches = matches.filter(match => match.status === 'pending');
+        } else if (statusFilter === 'active') {
+          matches = matches.filter(match => ['accepted', 'in_progress'].includes(match.status));
+        }
+      }
+      
+      console.log(`ActiveTasksList: Filtered to ${matches.length} matches (statusFilter: ${statusFilter})`);
+      setActiveTasks(matches);
+      setLoading(false);
+    }, (error) => {
+      console.error('ActiveTasksList: Error loading matches:', error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user?.uid, userType, statusFilter]);
 
   const handleTaskStatusUpdate = async (taskId: string, newStatus: string) => {
     try {
@@ -58,7 +114,6 @@ const ActiveTasksList = ({ userType }: ActiveTasksListProps) => {
         }
       }
     } catch (error) {
-      console.error('Error updating task status:', error);
       toast({
         title: "Error updating task",
         description: "Please try again",

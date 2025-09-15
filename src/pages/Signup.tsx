@@ -42,7 +42,6 @@ const Signup = () => {
       navigate('/');
       
     } catch (error: any) {
-      console.error("Signup error:", error);
       toast({
         title: "Error",
         description: error.message || "An unexpected error occurred. Please try again.",
@@ -63,7 +62,6 @@ const Signup = () => {
       });
       navigate('/');
     } catch (error: any) {
-      console.error("Google sign-up error:", error);
       toast({
         title: 'Error',
         description: error.message || 'Something went wrong with Google sign up.',
