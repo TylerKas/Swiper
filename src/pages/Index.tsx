@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { Users, Heart, HandHeart, User, Plus, Search, LogOut, LayoutDashboard } from "lucide-react";
-import heroImage from "@/assets/hero-image.jpg";
+import LogoWhite from "@/assets/LogoWhite.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { loadProfile, ProfileData } from "@/firebase";
@@ -122,9 +122,12 @@ const Index = () => {
       {/* Header */}
       <header className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Heart className="h-8 w-8 text-white" />
-            <h1 className="text-2xl font-bold text-white">Giggle</h1>
+          <div className="flex items-center">
+            <img 
+              src={LogoWhite} 
+              alt="Giggle" 
+              className="h-16 w-auto mt-4"
+            />
           </div>
           
           <div className="flex items-center space-x-4">
@@ -180,58 +183,46 @@ const Index = () => {
 
       {/* Hero Section */}
       <main className="container mx-auto px-4 py-12">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <div className="space-y-8">
-            <div className="space-y-4">
-              <h2 className="text-4xl md:text-6xl font-bold text-white leading-tight">
-                Connecting
-                <span className="block text-accent"> Generations</span>
-              </h2>
-              <p className="text-xl text-white/90 max-w-lg">
-                Connect people who need help with workers looking for opportunities. 
-                Building communities, one task at a time.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-6 justify-start">
-              <div className="text-center">
-                <Button
-                  size="lg"
-                  onClick={handleFindWorkClick}
-                  disabled={loading || (user && !isProfileComplete())}
-                  className="w-full sm:w-48 h-16 bg-white text-primary hover:bg-white/90 text-xl font-semibold shadow-warm rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Search className="h-6 w-6 mr-3" />
-                  Find Work
-                </Button>
-                <p className="text-white/80 text-sm mt-2">
-                  {user && !isProfileComplete() ? "Complete your profile first" : "Looking to earn money?"}
-                </p>
-              </div>
-              <div className="text-center">
-                <Button
-                  size="lg"
-                  onClick={handlePostJobClick}
-                  disabled={loading || (user && !isProfileComplete())}
-                  className="w-full sm:w-48 h-16 bg-white/20 backdrop-blur border-2 border-white/30 text-white hover:bg-white/30 text-xl font-semibold shadow-warm rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Plus className="h-6 w-6 mr-3" />
-                  Post a Job
-                </Button>
-                <p className="text-white/80 text-sm mt-2">
-                  {user && !isProfileComplete() ? "Complete your profile first" : "Need help with a task?"}
-                </p>
-              </div>
-            </div>
+        <div className="text-center space-y-8">
+          <div className="space-y-4">
+            <h2 className="text-4xl md:text-6xl font-bold text-white leading-tight">
+              Connecting
+              <span className="block text-accent"> Generations</span>
+            </h2>
+            <p className="text-xl text-white/90 max-w-2xl mx-auto">
+              Connect people who need help with workers looking for opportunities. 
+              Building communities, one task at a time.
+            </p>
           </div>
 
-          <div className="relative">
-            <div className="rounded-2xl overflow-hidden shadow-warm">
-              <img 
-                src={heroImage} 
-                alt="People working together in a cozy setting"
-                className="w-full h-auto object-cover"
-              />
+          <div className="flex flex-col sm:flex-row gap-6 justify-center">
+            <div className="text-center">
+              <Button
+                size="lg"
+                onClick={handleFindWorkClick}
+                disabled={loading || (user && !isProfileComplete())}
+                className="w-full sm:w-48 h-16 bg-white text-primary hover:bg-white/90 text-xl font-semibold shadow-warm rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Search className="h-6 w-6 mr-3" />
+                Find Work
+              </Button>
+              <p className="text-white/80 text-sm mt-2">
+                {user && !isProfileComplete() ? "Complete your profile first" : "Looking to earn money?"}
+              </p>
+            </div>
+            <div className="text-center">
+              <Button
+                size="lg"
+                onClick={handlePostJobClick}
+                disabled={loading || (user && !isProfileComplete())}
+                className="w-full sm:w-48 h-16 bg-white/20 backdrop-blur border-2 border-white/30 text-white hover:bg-white/30 text-xl font-semibold shadow-warm rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Plus className="h-6 w-6 mr-3" />
+                Post a Job
+              </Button>
+              <p className="text-white/80 text-sm mt-2">
+                {user && !isProfileComplete() ? "Complete your profile first" : "Need help with a task?"}
+              </p>
             </div>
           </div>
         </div>

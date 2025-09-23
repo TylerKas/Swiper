@@ -376,7 +376,7 @@ const Profile = () => {
               <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Heart className="h-8 w-8 text-white" />
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Join Giggle</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Join HelpMate</h1>
               <p className="text-gray-600">Create your profile to get started</p>
             </div>
             <Button 
@@ -622,7 +622,7 @@ const Profile = () => {
                     setAddressDraft("");
                   }
                 }}
-              />
+              />              
             </div>
 
             <div className="mb-8">
@@ -639,67 +639,10 @@ const Profile = () => {
           </div>
 
           <div className="flex justify-center space-x-4">
-            <Button
-              type="button"
-              onClick={async () => {
-                if (!addressDraft.trim() || !uid) return;
-                
-                try {
-                  // Use Google Geocoding API to get coordinates
-                  const geocoder = new google.maps.Geocoder();
-                  const result = await new Promise<google.maps.GeocoderResult[]>((resolve, reject) => {
-                    geocoder.geocode({ address: addressDraft }, (results, status) => {
-                      if (status === 'OK' && results) {
-                        resolve(results);
-                      } else {
-                        reject(new Error(`Geocoding failed: ${status}`));
-                      }
-                    });
-                  });
-                  
-                  if (result.length > 0) {
-                    const location = result[0].geometry.location;
-                    const lat = location.lat();
-                    const lng = location.lng();
-                    const formattedAddress = result[0].formatted_address;
-                    
-                    // Update both address and coordinates
-                    setProfileData(prev => ({
-                      ...prev,
-                      address: formattedAddress,
-                      location: { lat, lng }
-                    }));
-                    setAddressDraft(formattedAddress);
-                    
-                    // Save to Firebase
-                    await saveProfile({
-                      address: formattedAddress,
-                      location: { lat, lng }
-                    }, uid);
-                    
-                    toast({
-                      title: "Address updated!",
-                      description: "Your location has been saved with coordinates.",
-                    });
-                  }
-                } catch (error) {
-                  console.error('Geocoding error:', error);
-                  toast({
-                    title: "Error updating address",
-                    description: "Could not find coordinates for this address. Please try again.",
-                    variant: "destructive",
-                  });
-                }
-              }}
-              disabled={!addressDraft.trim()}
-              className="flex-1 max-w-xs"
-            >
-              Update Address
-            </Button>
             <Button 
               onClick={handleBackToHome}
               variant="outline"
-              className="flex-1 max-w-xs"
+              className="w-full max-w-xs"
             >
               Back to Home
             </Button>

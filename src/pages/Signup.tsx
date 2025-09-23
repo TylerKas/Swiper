@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { signInWithGoogle } from "@/firebase"; 
 import { registerWithEmail } from "@/firebase";
+import LogoOrange from "@/assets/LogoOrange.png";
 
 
 const signupSchema = z.object({
@@ -89,8 +90,13 @@ const Signup = () => {
         <Card className="w-full max-w-md bg-white/95 backdrop-blur">
           <CardHeader className="text-center">
             <CardTitle className="text-center flex items-center justify-center space-x-2">
-              <Heart className="h-6 w-6 text-primary" />
-              <span>Join HelpMate</span>
+            <span>Join  </span>
+            <img 
+                src={LogoOrange} 
+                alt="Giggle" 
+                className="h-7 w-auto"
+              />
+
             </CardTitle>
             <p className="text-muted-foreground">Create your account to get started</p>
           </CardHeader>

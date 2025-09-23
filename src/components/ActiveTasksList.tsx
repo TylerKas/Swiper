@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, CheckCircle, Clock, DollarSign, MapPin } from "lucide-react";
+import { MessageCircle, CheckCircle, Clock, DollarSign, MapPin, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
@@ -20,8 +20,15 @@ interface ActiveTask {
     payment: number;
     location: string;
     time_estimate: string;
+    preferred_date?: string;
+    preferred_time?: string;
   };
   other_user: {
+    id: string;
+    full_name: string;
+    user_type: 'worker' | 'client';
+  };
+  worker_user?: {
     id: string;
     full_name: string;
     user_type: 'worker' | 'client';
@@ -139,11 +146,12 @@ const ActiveTasksList = ({ userType, statusFilter = 'all' }: ActiveTasksListProp
   };
 
   if (showMessages && selectedTask) {
+    const otherUser = userType === 'worker' ? selectedTask.other_user : (selectedTask.worker_user || selectedTask.other_user);
     return (
       <MessageInterface
         taskId={selectedTask.task_id}
-        otherUserId={selectedTask.other_user.id}
-        otherUserName={selectedTask.other_user.full_name}
+        otherUserId={otherUser.id}
+        otherUserName={otherUser.full_name}
         taskTitle={selectedTask.task.title}
         taskPayment={selectedTask.task.payment}
         taskLocation={selectedTask.task.location}
@@ -154,12 +162,13 @@ const ActiveTasksList = ({ userType, statusFilter = 'all' }: ActiveTasksListProp
   }
 
   if (showRating && selectedTask) {
+    const otherUser = userType === 'worker' ? selectedTask.other_user : (selectedTask.worker_user || selectedTask.other_user);
     return (
       <RatingInterface
         taskId={selectedTask.task_id}
-        otherUserId={selectedTask.other_user.id}
-        otherUserName={selectedTask.other_user.full_name}
-        otherUserType={selectedTask.other_user.user_type}
+        otherUserId={otherUser.id}
+        otherUserName={otherUser.full_name}
+        otherUserType={otherUser.user_type}
         taskTitle={selectedTask.task.title}
         taskPayment={selectedTask.task.payment}
         taskLocation={selectedTask.task.location}
@@ -208,18 +217,14 @@ const ActiveTasksList = ({ userType, statusFilter = 'all' }: ActiveTasksListProp
 
   return (
     <div className="space-y-4">
-      <CardHeader className="px-0">
-        <CardTitle>Active Tasks</CardTitle>
-      </CardHeader>
-      
       {activeTasks.map((task) => (
         <Card key={task.id} className="bg-white shadow-sm border-0">
-          <CardContent className="p-4">
+          <CardContent className="p-6">
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
-                <h3 className="font-medium">{task.task.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  with {task.other_user.full_name}
+                <h3 className="text-lg font-semibold">{task.task.title}</h3>
+                <p className="text-base text-muted-foreground">
+                  with {userType === 'worker' ? task.other_user.full_name : (task.worker_user?.full_name || 'Unknown Worker')}
                 </p>
               </div>
               <Badge 
@@ -231,24 +236,41 @@ const ActiveTasksList = ({ userType, statusFilter = 'all' }: ActiveTasksListProp
             </div>
 
             <div className="flex items-center gap-4 mb-3 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <MapPin className="h-3 w-3" />
-                <span>{task.task.location}</span>
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                <span className="text-sm">{task.task.location}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                <span>{task.task.time_estimate}</span>
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                <span className="text-sm">{task.task.time_estimate}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <DollarSign className="h-3 w-3" />
-                <span>${task.task.payment}</span>
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                <span className="text-sm font-semibold">${task.task.payment}</span>
               </div>
             </div>
+
+            {(task.task.preferred_date || task.task.preferred_time) && (
+              <div className="flex items-center gap-4 mb-3 text-sm text-muted-foreground">
+                {task.task.preferred_date && (
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    <span className="text-sm">{new Date(task.task.preferred_date).toLocaleDateString()}</span>
+                  </div>
+                )}
+                {task.task.preferred_time && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    <span className="text-sm">{task.task.preferred_time}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex gap-2">
               <Button
                 variant="outline"
-                size="sm"
+                size="default"
                 onClick={() => handleMessageClick(task)}
                 className="flex-1"
               >
@@ -258,7 +280,7 @@ const ActiveTasksList = ({ userType, statusFilter = 'all' }: ActiveTasksListProp
               
               {task.status === 'accepted' && (
                 <Button
-                  size="sm"
+                  size="default"
                   onClick={() => handleTaskStatusUpdate(task.id, 'in_progress')}
                   className="flex-1 bg-gradient-primary hover:opacity-90"
                 >
@@ -268,7 +290,7 @@ const ActiveTasksList = ({ userType, statusFilter = 'all' }: ActiveTasksListProp
               
               {task.status === 'in_progress' && (
                 <Button
-                  size="sm"
+                  size="default"
                   onClick={() => handleTaskStatusUpdate(task.id, 'completed')}
                   className="flex-1 bg-green-600 hover:bg-green-700"
                 >

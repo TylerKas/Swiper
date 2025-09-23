@@ -25,9 +25,9 @@ const PostJob = () => {
     title: "",
     description: "",
     category: "",
+    customCategory: "",
     payment: "",
     timeEstimate: "",
-    urgency: "",
     preferredDate: "",
     preferredTime: "",
     specialRequirements: {
@@ -36,7 +36,9 @@ const PostJob = () => {
       hasOwnTools: false,
       experienceWithTech: false,
       ableToLiftHeavy: false,
-      previousCleaning: false
+      previousCleaning: false,
+      other: false,
+      otherDescription: ""
     }
   });
 
@@ -107,12 +109,6 @@ const PostJob = () => {
     "Other"
   ];
 
-  const urgencyOptions = [
-    "Very urgent - need it done today",
-    "Somewhat urgent - within a few days", 
-    "Not urgent - within a week or two",
-    "No rush - whenever works"
-  ];
 
   const timeOptions = [
     "30 minutes",
@@ -138,12 +134,17 @@ const PostJob = () => {
       !formData.title ||
       !formData.description ||
       !formData.category ||
+      (formData.category === "Other" && !formData.customCategory.trim()) ||
+      !formData.timeEstimate ||
+      !formData.preferredDate ||
+      !formData.preferredTime ||
+      (formData.specialRequirements.other && !formData.specialRequirements.otherDescription.trim()) ||
       Number.isNaN(payNumber) ||
       payNumber <= 0
     ) {
       toast({
         title: "Please fill in all required fields",
-        description: "Title, description, category, and payment (greater than $0) are required.",
+        description: "Title, description, category, payment (greater than $0), time estimate, preferred date, and preferred time are required. If you selected 'Other' for category or special requirements, please specify.",
         variant: "destructive",
       });
       return;
@@ -153,13 +154,12 @@ const PostJob = () => {
       setSubmitting(true);
       await createJob({
         title: formData.title,
-        category: formData.category,
+        category: formData.category === "Other" ? formData.customCategory : formData.category,
         description: formData.description,
         pay: payNumber,
         estimatedTime: formData.timeEstimate,
         preferredTime: formData.preferredTime,
         preferredDate: formData.preferredDate,
-        urgency: formData.urgency,
         requirements: {
           mustHaveCar: formData.specialRequirements.mustHaveCar,
           comfortableWithPets: formData.specialRequirements.comfortableWithPets,
@@ -167,6 +167,8 @@ const PostJob = () => {
           expComputers: formData.specialRequirements.experienceWithTech,
           canLiftHeavy: formData.specialRequirements.ableToLiftHeavy,
           expCleaning: formData.specialRequirements.previousCleaning,
+          other: formData.specialRequirements.other,
+          otherDescription: formData.specialRequirements.otherDescription,
         },
       });
 
@@ -180,9 +182,9 @@ const PostJob = () => {
         title: "",
         description: "",
         category: "",
+        customCategory: "",
         payment: "",
         timeEstimate: "",
-        urgency: "",
         preferredDate: "",
         preferredTime: "",
         specialRequirements: {
@@ -192,6 +194,8 @@ const PostJob = () => {
           experienceWithTech: false,
           ableToLiftHeavy: false,
           previousCleaning: false,
+          other: false,
+          otherDescription: ""
         },
       });
     } catch (error) {
@@ -282,6 +286,21 @@ const PostJob = () => {
                     </Select>
                   </div>
 
+                  {formData.category === "Other" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="customCategory" className="text-lg font-medium text-gray-900">Please specify *</Label>
+                      <Input
+                        id="customCategory"
+                        placeholder="Enter custom category..."
+                        value={formData.customCategory}
+                        onChange={(e) => handleInputChange('customCategory', e.target.value.slice(0, 100))}
+                        className="h-12 text-base border-gray-200 focus:border-orange-500 focus:ring-orange-500"
+                        maxLength={100}
+                        required
+                      />
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label htmlFor="description" className="text-lg font-medium text-gray-900">Description</Label>
                     <Textarea
@@ -304,7 +323,7 @@ const PostJob = () => {
                   
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label htmlFor="payment" className="text-lg font-medium text-gray-900">How much will you pay?</Label>
+                      <Label htmlFor="payment" className="text-lg font-medium text-gray-900">How much will you pay? *</Label>
                       <div className="relative">
                         <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                         <Input
@@ -329,8 +348,8 @@ const PostJob = () => {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-lg font-medium text-gray-900">How long will it take?</Label>
-                      <Select value={formData.timeEstimate} onValueChange={(v) => handleInputChange('timeEstimate', v)}>
+                      <Label className="text-lg font-medium text-gray-900">How long will it take? *</Label>
+                      <Select value={formData.timeEstimate} onValueChange={(v) => handleInputChange('timeEstimate', v)} required>
                         <SelectTrigger className="h-12 text-base border-gray-200 focus:border-orange-500 focus:ring-orange-500">
                           <SelectValue placeholder="Estimated time" />
                         </SelectTrigger>
@@ -347,42 +366,86 @@ const PostJob = () => {
 
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label htmlFor="preferredDate" className="text-lg font-medium text-gray-900">Preferred Date</Label>
+                      <Label htmlFor="preferredDate" className="text-lg font-medium text-gray-900">Preferred Date *</Label>
                       <Input
                         id="preferredDate"
                         type="date"
                         value={formData.preferredDate}
-                        onChange={(e) => handleInputChange('preferredDate', e.target.value)}
+                        onChange={(e) => {
+                          const newDate = e.target.value;
+                          const today = new Date();
+                          const selectedDate = new Date(newDate);
+                          
+                          // If user changes from today to a future date, clear the time
+                          // If user changes from future date to today, clear the time
+                          if (formData.preferredDate && formData.preferredTime) {
+                            const prevDate = new Date(formData.preferredDate);
+                            const wasToday = prevDate.toDateString() === today.toDateString();
+                            const isNowToday = selectedDate.toDateString() === today.toDateString();
+                            
+                            if (wasToday !== isNowToday) {
+                              handleInputChange('preferredTime', '');
+                            }
+                          }
+                          
+                          handleInputChange('preferredDate', newDate);
+                        }}
                         className="h-12 text-base border-gray-200 focus:border-orange-500 focus:ring-orange-500"
+                        min={(() => {
+                          const today = new Date();
+                          const year = today.getFullYear();
+                          const month = String(today.getMonth() + 1).padStart(2, '0');
+                          const day = String(today.getDate()).padStart(2, '0');
+                          return `${year}-${month}-${day}`;
+                        })()}
+                        max={(() => {
+                          const maxDate = new Date();
+                          maxDate.setDate(maxDate.getDate() + 30);
+                          const year = maxDate.getFullYear();
+                          const month = String(maxDate.getMonth() + 1).padStart(2, '0');
+                          const day = String(maxDate.getDate()).padStart(2, '0');
+                          return `${year}-${month}-${day}`;
+                        })()}
+                        required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="preferredTime" className="text-lg font-medium text-gray-900">Preferred Time</Label>
+                      <Label htmlFor="preferredTime" className="text-lg font-medium text-gray-900">Preferred Time *</Label>
                       <Input
                         id="preferredTime"
                         type="time"
                         value={formData.preferredTime}
-                        onChange={(e) => handleInputChange('preferredTime', e.target.value)}
+                        onChange={(e) => {
+                          const selectedDate = new Date(formData.preferredDate);
+                          const today = new Date();
+                          const isToday = selectedDate.toDateString() === today.toDateString();
+                          const currentTime = today.toTimeString().slice(0, 5);
+                          
+                          if (isToday && e.target.value < currentTime) {
+                            toast({
+                              title: "Invalid time",
+                              description: "Please select a time in the future.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          
+                          handleInputChange('preferredTime', e.target.value);
+                        }}
                         className="h-12 text-base border-gray-200 focus:border-orange-500 focus:ring-orange-500"
+                        min={(() => {
+                          const today = new Date();
+                          const year = today.getFullYear();
+                          const month = String(today.getMonth() + 1).padStart(2, '0');
+                          const day = String(today.getDate()).padStart(2, '0');
+                          const todayString = `${year}-${month}-${day}`;
+                          return formData.preferredDate === todayString ? today.toTimeString().slice(0, 5) : undefined;
+                        })()}
+                        required
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-lg font-medium text-gray-900">How urgent is this?</Label>
-                    <Select value={formData.urgency} onValueChange={(v) => handleInputChange('urgency', v)}>
-                      <SelectTrigger className="h-12 text-base border-gray-200 focus:border-orange-500 focus:ring-orange-500">
-                        <SelectValue placeholder="Somewhat urgent - within a few days" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {urgencyOptions.map(option => (
-                          <SelectItem key={option} value={option} className="text-base">
-                            {option}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
 
                 {/* Special Requirements */}
@@ -457,6 +520,56 @@ const PostJob = () => {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Other checkbox on its own row */}
+                  <div className="mt-4">
+                    <div className="flex items-center space-x-3">
+                      <input 
+                        type="checkbox" 
+                        id="other" 
+                        checked = {formData.specialRequirements.other}
+                        className="w-4 h-4 text-orange-500 border-gray-300 rounded focus:ring-orange-500"
+                        onChange={(e) => {
+                          handleInputChange('specialRequirements.other', e.target.checked);
+                          // Clear the description when unchecking
+                          if (!e.target.checked) {
+                            setFormData(prev => ({
+                              ...prev,
+                              specialRequirements: {
+                                ...prev.specialRequirements,
+                                otherDescription: ""
+                              }
+                            }));
+                          }
+                        }}
+                      />
+                      <Label htmlFor="other" className="text-base font-medium">Other</Label>
+                    </div>
+                  </div>
+                  
+                  {/* Other Description Input */}
+                  {formData.specialRequirements.other && (
+                    <div className="mt-4">
+                      <Label htmlFor="otherDescription" className="text-lg font-medium text-gray-900">Please specify *</Label>
+                      <Input
+                        id="otherDescription"
+                        placeholder="Describe the special requirement..."
+                        value={formData.specialRequirements.otherDescription}
+                        onChange={(e) => {
+                          setFormData(prev => ({
+                            ...prev,
+                            specialRequirements: {
+                              ...prev.specialRequirements,
+                              otherDescription: e.target.value.slice(0, 200)
+                            }
+                          }));
+                        }}
+                        className="h-12 text-base border-gray-200 focus:border-orange-500 focus:ring-orange-500 mt-2"
+                        maxLength={200}
+                        required
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Submit Button */}
