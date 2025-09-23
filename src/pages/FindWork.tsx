@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, X, Heart, MapPin, Clock, DollarSign, MessageSquare } from "lucide-react";
+import { ArrowLeft, X, Heart, MapPin, Clock, DollarSign, MessageSquare, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import ActiveTasksList from "@/components/ActiveTasksList";
@@ -23,8 +23,19 @@ interface Task {
   location: string;
   payment: number;
   timeEstimate: string;
+  preferredDate?: string;
+  preferredTime?: string;
   category: string;
-  urgency: string;
+  requirements?: {
+    mustHaveCar?: boolean;
+    comfortableWithPets?: boolean;
+    hasOwnTools?: boolean;
+    expComputers?: boolean;
+    canLiftHeavy?: boolean;
+    expCleaning?: boolean;
+    other?: boolean;
+    otherDescription?: string;
+  };
 }
 
 function distanceMiles(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
@@ -166,8 +177,10 @@ const FindWork = () => {
           location: miles === null ? "Nearby" : `${miles.toFixed(1)} miles away`,
           payment: j.pay,
           timeEstimate: j.estimatedTime,
+          preferredDate: j.preferredDate,
+          preferredTime: j.preferredTime,
           category: j.category,
-          urgency: j.urgency || "Flexible",
+          requirements: j.requirements,
         }));
 
         setTasks(mapped);
@@ -213,6 +226,10 @@ const FindWork = () => {
     if (!currentTask || !uid) return;
 
     try {
+      // Get the current user's profile to get their name
+      const workerProfile = await loadProfile(uid);
+      const workerName = workerProfile?.full_name || 'Unknown Worker';
+
       // Create a match record in Firestore
       const matchData = {
         workerId: uid,
@@ -226,11 +243,20 @@ const FindWork = () => {
           payment: currentTask.payment,
           location: currentTask.location,
           time_estimate: currentTask.timeEstimate,
+          preferred_date: currentTask.preferredDate,
+          preferred_time: currentTask.preferredTime,
         },
+        // For the worker's perspective (when viewing as worker)
         other_user: {
           id: currentTask.client_id,
           full_name: currentTask.clientName,
           user_type: 'client' as const,
+        },
+        // For the client's perspective (when viewing as client)
+        worker_user: {
+          id: uid,
+          full_name: workerName,
+          user_type: 'worker' as const,
         }
       };
 
@@ -306,9 +332,6 @@ const FindWork = () => {
                   <div className="bg-white/20 backdrop-blur rounded-full px-3 py-1 text-sm font-medium">
                     {currentTask.category}
                   </div>
-                  <div className="bg-white/20 backdrop-blur rounded-full px-3 py-1 text-sm font-medium">
-                    {currentTask.urgency}
-                  </div>
                 </div>
                 
                 <h2 className="text-3xl font-bold mb-2 uppercase tracking-wide">{currentTask.title}</h2>
@@ -330,9 +353,63 @@ const FindWork = () => {
                 </div>
 
                 {/* Payment Badge */}
-                <div className="bg-white/20 backdrop-blur rounded-2xl p-4 text-center mb-8">
+                <div className="bg-white/20 backdrop-blur rounded-2xl p-4 text-center mb-6">
                   <span className="text-2xl font-bold">${currentTask.payment}</span>
                 </div>
+
+                {/* Preferred Date/Time */}
+                {(currentTask.preferredDate || currentTask.preferredTime) && (
+                  <div className="flex items-center justify-center gap-6 mb-6">
+                    {currentTask.preferredDate && (
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="h-4 w-4 opacity-80" />
+                        <span className="text-sm">{new Date(currentTask.preferredDate).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                    {currentTask.preferredTime && (
+                      <div className="flex items-center space-x-2">
+                        <Clock className="h-4 w-4 opacity-80" />
+                        <span className="text-sm">{currentTask.preferredTime}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Special Requirements */}
+                {currentTask.requirements && (
+                  <div className="mb-6">
+                    {(() => {
+                      const reqs = currentTask.requirements;
+                      const requirements = [];
+                      
+                      if (reqs.mustHaveCar) requirements.push("Must have car");
+                      if (reqs.comfortableWithPets) requirements.push("Comfortable with pets");
+                      if (reqs.hasOwnTools) requirements.push("Has own tools");
+                      if (reqs.expComputers) requirements.push("Experience with tech");
+                      if (reqs.canLiftHeavy) requirements.push("Able to lift heavy");
+                      if (reqs.expCleaning) requirements.push("Previous cleaning");
+                      if (reqs.other && reqs.otherDescription) requirements.push(reqs.otherDescription);
+                      
+                      if (requirements.length === 0) return null;
+                      
+                      return (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium opacity-80">Requirements:</p>
+                          <div className="flex flex-wrap justify-center gap-2">
+                            {requirements.map((req, index) => (
+                              <div
+                                key={index}
+                                className="bg-white/20 backdrop-blur rounded-full px-3 py-1 text-xs font-medium"
+                              >
+                                {req}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
             </div>
 

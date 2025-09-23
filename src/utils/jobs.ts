@@ -10,7 +10,6 @@ export type Job = {
     estimatedTime: string;
     preferredTime: string;
     preferredDate: string;
-    urgency: string;
     requirements: {
         mustHaveCar?: boolean;
         comfortableWithPets?: boolean;
@@ -18,6 +17,8 @@ export type Job = {
         expComputers?: boolean;
         canLiftHeavy?: boolean;
         expCleaning?: boolean;
+        other?: boolean;
+        otherDescription?: string;
       };
     status: "open" | "closed";
     createdAt?: any;
